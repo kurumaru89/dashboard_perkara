@@ -29,6 +29,16 @@
     <link rel="stylesheet" href="assets/css/semi-dark.css" />
     <link rel="stylesheet" href="assets/css/header-colors.css" />
     <title>Dashboard Monitoring Kinerja Satuan Kerja MS Se-Aceh</title>
+
+    <style>
+        .sticky-filter {
+            position: sticky;
+            top: 80px;
+            z-index: 1020;
+            background: #fff;
+            transition: box-shadow .2s ease;
+        }
+    </style>
 </head>
 
 <body>
@@ -55,7 +65,7 @@
         <!--start page wrapper -->
         <div class="page-wrapper">
             <div class="page-content">
-                <div class="card">
+                <div class="card sticky-filter">
                     <div class="card-body">
                         <form id="formFilter">
                             <div class="row align-items-end">
@@ -95,17 +105,24 @@
 
                 <div class="row">
                     <div class="col-12">
-                        <div class="card">
-                            <div class="card-header">
-                                Beban Perkara Satuan Kerja
+                        <div class="card card-collapsible">
+                            <div class="card-header d-flex justify-content-between align-items-center">
+                                <span><i class="bx bx-bar-chart-alt-2 me-2"></i> Beban Perkara Satuan Kerja</span>
+                                <button class="btn btn-sm btn-light btn-collapse" type="button"
+                                    data-bs-toggle="collapse" data-bs-target="#bodyBebanKerja" aria-expanded="true"
+                                    aria-label="Toggle Beban Perkara">
+                                    <i class="bx bx-chevron-up"></i>
+                                </button>
                             </div>
-                            <div class="card-body">
-                                <div class="row">
-                                    <div class="col-lg-4 col-md-4 col-sm-12">
-                                        <div id="chartBebanKerja"></div>
-                                    </div>
-                                    <div class="col-lg-8 col-md-4 col-sm-12">
-                                        <div id="grafikBebanKerja"></div>
+                            <div id="bodyBebanKerja" class="collapse show">
+                                <div class="card-body">
+                                    <div class="row">
+                                        <div class="col-lg-4 col-md-4 col-sm-12">
+                                            <div id="chartBebanKerja"></div>
+                                        </div>
+                                        <div class="col-lg-8 col-md-8 col-sm-12">
+                                            <div id="grafikBebanKerja"></div>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
@@ -115,23 +132,37 @@
 
                 <div class="row">
                     <div class="col-lg-6 col-md-12">
-                        <div class="card">
-                            <div class="card-header">
-                                Monitoring Perkara Eksekusi
+                        <div class="card card-collapsible">
+                            <div class="card-header d-flex justify-content-between align-items-center">
+                                <span><i class="bx bx-list-check me-2"></i> Monitoring Perkara Eksekusi</span>
+                                <button class="btn btn-sm btn-light btn-collapse" type="button"
+                                    data-bs-toggle="collapse" data-bs-target="#bodyEksekusi" aria-expanded="true"
+                                    aria-label="Toggle Eksekusi">
+                                    <i class="bx bx-chevron-up"></i>
+                                </button>
                             </div>
-                            <div class="card-body">
-                                <div id="tabelEksekusi"></div>
+                            <div id="bodyEksekusi" class="collapse show">
+                                <div class="card-body">
+                                    <div id="tabelEksekusi"></div>
+                                </div>
                             </div>
                         </div>
                     </div>
-
                     <div class="col-lg-6 col-md-12">
-                        <div class="card">
-                            <div class="card-header">
-                                Monitoring Perkara Eksekusi Hak Tanggungan
+                        <div class="card card-collapsible">
+                            <div class="card-header d-flex justify-content-between align-items-center">
+                                <span><i class="bx bx-building-house me-2"></i> Monitoring Perkara Eksekusi Hak
+                                    Tanggungan</span>
+                                <button class="btn btn-sm btn-light btn-collapse" type="button"
+                                    data-bs-toggle="collapse" data-bs-target="#bodyEksekusiHT" aria-expanded="true"
+                                    aria-label="Toggle Eksekusi HT">
+                                    <i class="bx bx-chevron-up"></i>
+                                </button>
                             </div>
-                            <div class="card-body">
-                                <div id="tabelEksekusiHT"></div>
+                            <div id="bodyEksekusiHT" class="collapse show">
+                                <div class="card-body">
+                                    <div id="tabelEksekusiHT"></div>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -139,12 +170,47 @@
 
                 <div class="row">
                     <div class="col-12">
-                        <div class="card">
-                            <div class="card-header">
-                                Monitoring Laporan Perkara Jinayat
+                        <div class="card card-collapsible">
+                            <div class="card-header d-flex justify-content-between align-items-center">
+                                <span><i class="bx bx-book-open me-2"></i> Monitoring Laporan Perkara Jinayat</span>
+                                <button class="btn btn-sm btn-light btn-collapse" type="button"
+                                    data-bs-toggle="collapse" data-bs-target="#bodyJinayat" aria-expanded="true"
+                                    aria-label="Toggle Jinayat">
+                                    <i class="bx bx-chevron-up"></i>
+                                </button>
                             </div>
-                            <div class="card-body">
-                                <div id="tabelPerkaraJinayat"></div>
+                            <div id="bodyJinayat" class="collapse show">
+                                <div class="card-body">
+                                    <div class="row">
+                                        <div class="col-lg-4 col-md-12">
+                                            <div id="chartPerkaraJinayat"></div>
+                                        </div>
+                                        <div class="col-lg-8 col-md-12">
+                                            <div id="tabelPerkaraJinayat"></div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="col-12">
+                        <div class="card card-collapsible">
+                            <div class="card-header d-flex justify-content-between align-items-center">
+                                <span><i class="bx bx-book-open me-2"></i> Monitoring Laporan Perkara Jinayat
+                                    Kasasi</span>
+                                <button class="btn btn-sm btn-light btn-collapse" type="button"
+                                    data-bs-toggle="collapse" data-bs-target="#bodyJinayatKasasi" aria-expanded="true"
+                                    aria-label="Toggle Jinayat Kasasi">
+                                    <i class="bx bx-chevron-up"></i>
+                                </button>
+                            </div>
+                            <div id="bodyJinayatKasasi" class="collapse show">
+                                <div class="card-body">
+                                    <div id="tabelPerkaraJinayatKasasi"></div>
+                                </div>
                             </div>
                         </div>
                     </div>

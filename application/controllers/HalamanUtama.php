@@ -92,19 +92,21 @@ class HalamanUtama extends CI_Controller
         echo json_encode($data);
     }
 
-    public function get_pie_beban_perkara() {
+    public function get_pie_beban_perkara()
+    {
         $kode_satker = $this->input->get('kode_satker', true);
 
         $data = $this->model->get_pie_beban_perkara($kode_satker);
 
         header('Content-Type: application/json');
         echo json_encode([
-            'masuk' => (int)$data->perkara_masuk_tahun_ini,
-            'sisa'  => (int)$data->sisa_perkara_tahun_lalu
+            'masuk' => (int) $data->perkara_masuk_tahun_ini,
+            'sisa' => (int) $data->sisa_perkara_tahun_lalu
         ]);
     }
 
-    public function show_jinayat() {
+    public function show_jinayat()
+    {
         $kode = $this->input->post('kode');
         $tgl_awal = $this->input->post('tgl_awal');
         $tgl_akhir = $this->input->post('tgl_akhir');
@@ -113,8 +115,8 @@ class HalamanUtama extends CI_Controller
         if ($kode == '401582') {
             if (!empty($tgl_awal) && !empty($tgl_akhir)) {
                 $where = [
-                    'DATE(permohonan_eksekusi) >=' => $tgl_awal,
-                    'DATE(permohonan_eksekusi) <=' => $tgl_akhir
+                    'DATE(tanggal_pendaftaran) >=' => $tgl_awal,
+                    'DATE(tanggal_pendaftaran) <=' => $tgl_akhir
                 ];
             }
 
@@ -123,13 +125,13 @@ class HalamanUtama extends CI_Controller
             if (!empty($tgl_awal) && !empty($tgl_akhir)) {
                 $where = [
                     'kode_satker' => $kode,
-                    'DATE(permohonan_eksekusi) >=' => $tgl_awal,
-                    'DATE(permohonan_eksekusi) <=' => $tgl_akhir
+                    'DATE(tanggal_pendaftaran) >=' => $tgl_awal,
+                    'DATE(tanggal_pendaftaran) <=' => $tgl_akhir
                 ];
             } else
                 $where = ['kode_satker' => $kode];
 
-            $query = $this->model->get_seleksi_array('v_eksekusi', $where, ['tanggal_pendaftaran' => 'DESC'])->result();
+            $query = $this->model->get_seleksi_array('v_perkara_jinayat', $where, ['tanggal_pendaftaran' => 'DESC'])->result();
         }
 
         $data = [];
@@ -148,5 +150,70 @@ class HalamanUtama extends CI_Controller
         }
 
         echo json_encode(['data_jinayat' => $data]);
+    }
+
+    public function get_chart_jinayat()
+    {
+        $kode = $this->input->get('kode_satker', true);
+        $tgl_awal = $this->input->post('tgl_awal');
+        $tgl_akhir = $this->input->post('tgl_akhir');
+
+        $data = $this->model->get_chart_jinayat($kode, $tgl_awal, $tgl_akhir);
+
+        header('Content-Type: application/json');
+        foreach ($data as $row) {
+            $row->jumlah = (int) $row->jumlah;
+        }
+
+        echo json_encode($data);
+    }
+
+    public function show_jinayat_kasasi()
+    {
+        $kode = $this->input->post('kode');
+        $tgl_awal = $this->input->post('tgl_awal');
+        $tgl_akhir = $this->input->post('tgl_akhir');
+
+        $where = [];
+        if ($kode == '401582') {
+            if (!empty($tgl_awal) && !empty($tgl_akhir)) {
+                $where = [
+                    'DATE(tanggal_pendaftaran) >=' => $tgl_awal,
+                    'DATE(tanggal_pendaftaran) <=' => $tgl_akhir
+                ];
+            }
+
+            $query = $this->model->get_seleksi_array('v_perkara_jinayat_kasasi', $where, ['tanggal_permohonan_kasasi' => 'DESC'])->result();
+        } else {
+            if (!empty($tgl_awal) && !empty($tgl_akhir)) {
+                $where = [
+                    'kode_satker' => $kode,
+                    'DATE(tanggal_permohonan_kasasi) >=' => $tgl_awal,
+                    'DATE(tanggal_permohonan_kasasi) <=' => $tgl_akhir
+                ];
+            } else
+                $where = ['kode_satker' => $kode];
+
+            $query = $this->model->get_seleksi_array('v_perkara_jinayat_kasasi', $where, ['tanggal_permohonan_kasasi' => 'DESC'])->result();
+        }
+
+        $data = [];
+
+        foreach ($query as $row) {
+            $data[] = [
+                'nama_satker' => $row->nama_satker,
+                'nomor_perkara' => $row->nomor_perkara,
+                'nomor_perkara_kasasi' => $row->nomor_perkara_kasasi,
+                'jenis_perkara' => $row->jenis_perkara,
+                'tanggal_permohonan_kasasi' => $row->tanggal_permohonan_kasasi,
+                'tanggal_putusan_kasasi' => $row->tanggal_putusan_kasasi,
+                'jenis_hukuman' => $row->jenis_hukuman,
+                'status_putusan_kasasi' => $row->status_putusan_kasasi,
+                'nama_terdakwa' => $row->nama_terdakwa,
+                'usia' => $row->usia
+            ];
+        }
+
+        echo json_encode(['data_jinayat_kasasi' => $data]);
     }
 }

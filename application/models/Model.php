@@ -112,4 +112,39 @@ class Model extends CI_Model
 
         return $this->db->get()->row();
     }
+
+    public function get_chart_jinayat($kode_satker, $tgl_awal = null, $tgl_akhir = null)
+    {
+        $this->db->select('
+            r.jenis_perkara_id,
+            r.nama,
+            COUNT(j.jenis_perkara_id) AS jumlah
+        ', false);
+
+        $this->db->from('fact_perkara_jinayat j');
+        $this->db->join(
+            'dim_jenis_perkara r',
+            'j.jenis_perkara_id = r.jenis_perkara_id',
+            'right'
+        );
+
+        $this->db->where('r.jenis_perkara_id >=', 501);
+        $this->db->where('r.jenis_perkara_id <=', 509);
+
+        // filter satker (opsional)
+        if (!empty($kode_satker) && $kode_satker != '401582') {
+            $this->db->where('j.kode_satker', $kode_satker);
+        }
+
+        // filter tanggal (opsional)
+        if (!empty($tgl_awal) && !empty($tgl_akhir)) {
+            $this->db->where('j.tanggal_pendaftaran >=', $tgl_awal);
+            $this->db->where('j.tanggal_pendaftaran <=', $tgl_akhir);
+        }
+
+        $this->db->group_by(['r.jenis_perkara_id', 'r.nama']);
+        $this->db->order_by('r.jenis_perkara_id', 'ASC');
+
+        return $this->db->get()->result();
+    }
 }

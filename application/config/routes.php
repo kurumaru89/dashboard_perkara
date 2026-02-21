@@ -11,3 +11,5 @@ $route['get_chart_beban_perkara'] = 'HalamanUtama/get_chart_beban_perkara';
 $route['get_pie_beban_perkara'] = 'HalamanUtama/get_pie_beban_perkara';
 
 $route['show_jinayat'] = 'HalamanUtama/show_jinayat';
+$route['get_chart_jinayat'] = 'HalamanUtama/get_chart_jinayat';
+$route['show_jinayat_kasasi'] = 'HalamanUtama/show_jinayat_kasasi';
