@@ -132,7 +132,7 @@ class HalamanUtama extends CI_Controller
             7 => 'usia'
         ];
 
-        $orderColumn = isset($columns[$orderColumnIndex])? $columns[$orderColumnIndex] : 'tanggal_pendaftaran';
+        $orderColumn = isset($columns[$orderColumnIndex]) ? $columns[$orderColumnIndex] : 'tanggal_pendaftaran';
 
         // Base Query
         $this->db->from('v_perkara_jinayat');
@@ -208,8 +208,10 @@ class HalamanUtama extends CI_Controller
         $tgl_awal = $this->input->post('tgl_awal');
         $tgl_akhir = $this->input->post('tgl_akhir');
 
-        $data = $this->model->get_chart_jinayat($kode, $tgl_awal, $tgl_akhir);
-
+        if (!empty($tgl_awal) && !empty($tgl_akhir))
+            $data = $this->model->get_chart_jinayat($kode, $tgl_awal, $tgl_akhir);
+        else
+            $data = $this->model->get_chart_jinayat($kode);
         header('Content-Type: application/json');
         foreach ($data as $row) {
             $row->jumlah = (int) $row->jumlah;

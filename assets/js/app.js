@@ -620,7 +620,7 @@
 				drawCallback: function (settings) {
 					const json = settings.json;
 					if (json) {
-						updateTotalBadge(json.recordsFiltered || json.recordsTotal || 0);
+						updateTotalBadge(json.recordsFiltered || 0);
 					}
 					resolve();
 				}
@@ -634,7 +634,7 @@
 			// Fallback: Update badge setelah ajax complete
 			$('#tabelPerkaraJinayatData').on('xhr.dt', function (e, settings, json) {
 				if (json) {
-					updateTotalBadge(json.recordsFiltered || json.recordsTotal || 0);
+					updateTotalBadge(json.recordsFiltered || 0);
 				}
 			});
 		});
