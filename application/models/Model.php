@@ -24,6 +24,8 @@ class Model extends CI_Model
                 }
             }
 
+            $this->db->limit(1000); // atau jumlah yang wajar
+            
             return $this->db->get($tabel);
         } catch (Exception $e) {
             return 0;

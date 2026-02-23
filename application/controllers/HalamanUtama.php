@@ -24,19 +24,21 @@ class HalamanUtama extends CI_Controller
         $where = [];
         if ($kode == '401582') {
             if (!empty($tgl_awal) && !empty($tgl_akhir)) {
+                // Optimasi: Hindari fungsi DATE() di WHERE clause agar bisa menggunakan index
                 $where = [
-                    'DATE(permohonan_eksekusi) >=' => $tgl_awal,
-                    'DATE(permohonan_eksekusi) <=' => $tgl_akhir
+                    'permohonan_eksekusi >=' => $tgl_awal,
+                    'permohonan_eksekusi <=' => $tgl_akhir
                 ];
             }
 
             $query = $this->model->get_seleksi_array('fact_eksekusi', $where, ['permohonan_eksekusi' => 'DESC'])->result();
         } else {
             if (!empty($tgl_awal) && !empty($tgl_akhir)) {
+                // Optimasi: Hindari fungsi DATE() di WHERE clause agar bisa menggunakan index
                 $where = [
                     'kode_satker' => $kode,
-                    'DATE(permohonan_eksekusi) >=' => $tgl_awal,
-                    'DATE(permohonan_eksekusi) <=' => $tgl_akhir
+                    'permohonan_eksekusi >=' => $tgl_awal,
+                    'permohonan_eksekusi <=' => $tgl_akhir
                 ];
             } else
                 $where = ['kode_satker' => $kode];
@@ -107,54 +109,102 @@ class HalamanUtama extends CI_Controller
 
     public function show_jinayat()
     {
+        $draw = $this->input->post('draw');
+        $start = $this->input->post('start');
+        $length = $this->input->post('length');
+
+        $orderColumnIndex = $this->input->post('order')[0]['column'];
+        $orderDir = $this->input->post('order')[0]['dir'];
+        $searchValue = $this->input->post('search')['value'];
+
         $kode = $this->input->post('kode');
         $tgl_awal = $this->input->post('tgl_awal');
         $tgl_akhir = $this->input->post('tgl_akhir');
 
-        $where = [];
-        if ($kode == '401582') {
-            if (!empty($tgl_awal) && !empty($tgl_akhir)) {
-                $where = [
-                    'DATE(tanggal_pendaftaran) >=' => $tgl_awal,
-                    'DATE(tanggal_pendaftaran) <=' => $tgl_akhir
-                ];
-            }
+        $columns = [
+            0 => 'nama_satker',
+            1 => 'nomor_perkara',
+            2 => 'jenis_perkara',
+            3 => 'tanggal_pendaftaran',
+            4 => 'tanggal_putusan',
+            5 => 'jenis_hukuman',
+            6 => 'nama_terdakwa',
+            7 => 'usia'
+        ];
 
-            $query = $this->model->get_seleksi_array('v_perkara_jinayat', $where, ['tanggal_pendaftaran' => 'DESC'])->result();
-        } else {
-            if (!empty($tgl_awal) && !empty($tgl_akhir)) {
-                $where = [
-                    'kode_satker' => $kode,
-                    'DATE(tanggal_pendaftaran) >=' => $tgl_awal,
-                    'DATE(tanggal_pendaftaran) <=' => $tgl_akhir
-                ];
-            } else
-                $where = ['kode_satker' => $kode];
+        $orderColumn = isset($columns[$orderColumnIndex])? $columns[$orderColumnIndex] : 'tanggal_pendaftaran';
 
-            $query = $this->model->get_seleksi_array('v_perkara_jinayat', $where, ['tanggal_pendaftaran' => 'DESC'])->result();
+        // Base Query
+        $this->db->from('v_perkara_jinayat');
+
+        // FILTER KODE
+        if ($kode !== '401582') {
+            $this->db->where('kode_satker', $kode);
         }
 
-        $data = [];
+        // FILTER TANGGAL (INDEX FRIENDLY)
+        if (!empty($tgl_awal) && !empty($tgl_akhir)) {
+            $this->db->where('tanggal_pendaftaran >=', $tgl_awal);
+            $this->db->where('tanggal_pendaftaran <=', $tgl_akhir);
+        }
 
-        foreach ($query as $row) {
+        // SEARCH
+        if (!empty($searchValue)) {
+            $this->db->group_start();
+            $this->db->like('nomor_perkara', $searchValue);
+            $this->db->or_like('nama_terdakwa', $searchValue);
+            $this->db->or_like('jenis_perkara', $searchValue);
+            $this->db->group_end();
+        }
+
+        // CLONE untuk hitung filtered
+        $dbClone = clone $this->db;
+        $recordsFiltered = $dbClone->count_all_results('', FALSE);
+
+        // ORDER
+        $this->db->order_by($orderColumn, $orderDir);
+
+        // LIMIT (INI KUNCI SERVER SIDE)
+        $this->db->limit($length, $start);
+
+        $query = $this->db->get();
+        $result = $query->result();
+
+        $data = [];
+        $no = $start + 1;
+
+        foreach ($result as $row) {
             $data[] = [
-                'nama_satker' => $row->nama_satker,
-                'nomor_perkara' => $row->nomor_perkara,
-                'jenis_perkara' => $row->jenis_perkara,
-                'tanggal_pendaftaran' => $row->tanggal_pendaftaran,
-                'tanggal_putusan' => $row->tanggal_putusan,
-                'jenis_hukuman' => $row->jenis_hukuman,
-                'nama_terdakwa' => $row->nama_terdakwa,
-                'usia' => $row->usia
+                $no++,
+                $row->nama_satker,
+                $row->nomor_perkara,
+                $row->jenis_perkara,
+                $row->tanggal_pendaftaran,
+                $row->tanggal_putusan,
+                $row->jenis_hukuman,
+                $row->nama_terdakwa,
+                $row->usia
             ];
         }
 
-        echo json_encode(['data_jinayat' => $data]);
+        // TOTAL DATA TANPA FILTER
+        $this->db->from('v_perkara_jinayat');
+        if ($kode !== '401582') {
+            $this->db->where('kode_satker', $kode);
+        }
+        $recordsTotal = $this->db->count_all_results();
+
+        echo json_encode([
+            "draw" => intval($draw),
+            "recordsTotal" => $recordsTotal,
+            "recordsFiltered" => $recordsFiltered,
+            "data" => $data
+        ]);
     }
 
     public function get_chart_jinayat()
     {
-        $kode = $this->input->get('kode_satker', true);
+        $kode = $this->input->post('kode_satker', true);
         $tgl_awal = $this->input->post('tgl_awal');
         $tgl_akhir = $this->input->post('tgl_akhir');
 
@@ -177,19 +227,21 @@ class HalamanUtama extends CI_Controller
         $where = [];
         if ($kode == '401582') {
             if (!empty($tgl_awal) && !empty($tgl_akhir)) {
+                // Optimasi: Hindari fungsi DATE() di WHERE clause agar bisa menggunakan index
                 $where = [
-                    'DATE(tanggal_pendaftaran) >=' => $tgl_awal,
-                    'DATE(tanggal_pendaftaran) <=' => $tgl_akhir
+                    'tanggal_permohonan_kasasi >=' => $tgl_awal,
+                    'tanggal_permohonan_kasasi <=' => $tgl_akhir
                 ];
             }
 
             $query = $this->model->get_seleksi_array('v_perkara_jinayat_kasasi', $where, ['tanggal_permohonan_kasasi' => 'DESC'])->result();
         } else {
             if (!empty($tgl_awal) && !empty($tgl_akhir)) {
+                // Optimasi: Hindari fungsi DATE() di WHERE clause agar bisa menggunakan index
                 $where = [
                     'kode_satker' => $kode,
-                    'DATE(tanggal_permohonan_kasasi) >=' => $tgl_awal,
-                    'DATE(tanggal_permohonan_kasasi) <=' => $tgl_akhir
+                    'tanggal_permohonan_kasasi >=' => $tgl_awal,
+                    'tanggal_permohonan_kasasi <=' => $tgl_akhir
                 ];
             } else
                 $where = ['kode_satker' => $kode];

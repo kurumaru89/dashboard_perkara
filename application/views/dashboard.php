@@ -5,8 +5,8 @@
     <!-- Required meta tags -->
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <!--favicon-->
-    <link rel="icon" href="assets/images/e-supel.png" type="image/png" />
+    <!--favicon (gunakan icon yang ada; ganti ke e-supel.png setelah file tersedia)-->
+    <link rel="icon" href="assets/images/icons/chair.svg" type="image/svg+xml" />
     <!--plugins-->
     <link rel="stylesheet" href="assets/plugins/notifications/css/lobibox.min.css" />
     <link href="assets/plugins/simplebar/css/simplebar.css" rel="stylesheet" />
@@ -18,7 +18,7 @@
 
     <!-- loader-->
     <link href="assets/css/pace.min.css" rel="stylesheet" />
-    <script src="assets/js/pace.min.js"></script>
+    <script src="assets/js/pace.min.js" defer></script>
     <!-- Bootstrap CSS -->
     <link href="assets/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500&display=swap" rel="stylesheet">
@@ -38,6 +38,13 @@
             background: #fff;
             transition: box-shadow .2s ease;
         }
+        /* Reserve space untuk konten dinamis - kurangi CLS (Lighthouse) */
+        #tabelEksekusi, #tabelEksekusiHT, #tabelPerkaraJinayat, #tabelPerkaraJinayatKasasi {
+            min-height: 180px;
+        }
+        #chartBebanKerja, #grafikBebanKerja, #chartPerkaraJinayat {
+            min-height: 200px;
+        }
     </style>
 </head>
 
@@ -51,7 +58,7 @@
                     <div class="user-box dropdown">
                         <a class="d-flex align-items-center nav-link dropdown-toggle dropdown-toggle-nocaret" href="#"
                             role="button" aria-expanded="false">
-                            <img src="assets/images/e-supel.png" class="logo-icon" alt="logo icon">
+                            <img src="assets/images/icons/chair.svg" class="logo-icon" alt="Logo MRTG" width="40" height="40">
                             <div class="user-info ps-3">
                                 <h4 class="logo-text">MRTG (Monitoring Kinerja Satuan Kerja)</h4>
                             </div>
@@ -169,7 +176,25 @@
                 </div>
 
                 <div class="row">
-                    <div class="col-12">
+                    <div class="col-lg-4 col-md-12">
+                        <div class="card card-collapsible">
+                            <div class="card-header d-flex justify-content-between align-items-center">
+                                <span><i class="bx bx-book-open me-2"></i> Kurva Laporan Perkara Jinayat</span>
+                                <button class="btn btn-sm btn-light btn-collapse" type="button"
+                                    data-bs-toggle="collapse" data-bs-target="#bodyChartJinayat" aria-expanded="true"
+                                    aria-label="Toggle Jinayat">
+                                    <i class="bx bx-chevron-up"></i>
+                                </button>
+                            </div>
+                            <div id="bodyChartJinayat" class="collapse show">
+                                <div class="card-body">
+                                    <div id="chartPerkaraJinayat"></div>
+                                </div>
+                            </div>
+                        </div>
+
+                    </div>
+                    <div class="col-lg-8 col-md-12">
                         <div class="card card-collapsible">
                             <div class="card-header d-flex justify-content-between align-items-center">
                                 <span><i class="bx bx-book-open me-2"></i> Monitoring Laporan Perkara Jinayat</span>
@@ -181,14 +206,7 @@
                             </div>
                             <div id="bodyJinayat" class="collapse show">
                                 <div class="card-body">
-                                    <div class="row">
-                                        <div class="col-lg-4 col-md-12">
-                                            <div id="chartPerkaraJinayat"></div>
-                                        </div>
-                                        <div class="col-lg-8 col-md-12">
-                                            <div id="tabelPerkaraJinayat"></div>
-                                        </div>
-                                    </div>
+                                    <div id="tabelPerkaraJinayat"></div>
                                 </div>
                             </div>
                         </div>
@@ -246,11 +264,13 @@
     <script src="assets/plugins/datatable/js/jquery.dataTables.min.js"></script>
     <script src="assets/plugins/datatable/js/dataTables.bootstrap5.min.js"></script>
     <script src="assets/plugins/apexcharts-bundle/js/apexcharts.min.js"></script>
+    <script src="assets/plugins/sweetalert2/sweetalert2.all.min.js"></script>
 
     <!--app JS-->
     <script src="assets/js/app.js"></script>
     <script>
         $(document).ready(function () {
+            loadChartBebanKerja();
             loadDashboardPerkara('<?= $kode ?>');
         });
 
