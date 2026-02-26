@@ -45,6 +45,34 @@
         #chartBebanKerja, #grafikBebanKerja, #chartPerkaraJinayat {
             min-height: 200px;
         }
+
+        /* KPI Card Tooltip Fix */
+        .kpi-card {
+            cursor: help;
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }
+        .kpi-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1) !important;
+        }
+
+        /* Custom Tooltip Style */
+        .custom-tooltip.tooltip {
+            opacity: 1 !important;
+            pointer-events: none;
+        }
+        .custom-tooltip .tooltip-inner {
+            background-color: #343a40;
+            color: #fff;
+            padding: 6px 12px;
+            font-size: 12px;
+            border-radius: 4px;
+            max-width: 200px;
+            text-align: center;
+        }
+        .custom-tooltip .tooltip-arrow::before {
+            border-top-color: #343a40;
+        }
     </style>
 </head>
 
@@ -77,7 +105,7 @@
                         <form id="formFilter">
                             <div class="row align-items-end">
                                 <!-- Satuan Kerja -->
-                                <div class="col-lg-5 col-md-6 mb-3">
+                                <div class="col-lg-3 col-md-6 mb-3">
                                     <label class="form-label">Satuan Kerja</label>
                                     <select class="form-select w-100 satker-select" id="satker"
                                         onchange="getSatker(this)">
@@ -89,24 +117,42 @@
                                     </select>
                                 </div>
 
-                                <!-- Filter Tanggal -->
-                                <div class="col-lg-5 col-md-6 mb-3">
-                                    <label class="form-label">Filter Tanggal</label>
+                                <!-- Filter Tahun -->
+                                <div class="col-lg-2 col-md-6 mb-3">
+                                    <label class="form-label">Filter Tahun</label>
+                                    <select class="form-select w-100" id="filter_tahun">
+                                        <option value="">Semua Tahun</option>
+                                        <option value="2024">2024</option>
+                                        <option value="2025">2025</option>
+                                        <option value="2026">2026</option>
+                                    </select>
+                                </div>
+
+                                <!-- Filter Tanggal Range -->
+                                <div class="col-lg-4 col-md-6 mb-3">
+                                    <label class="form-label">Filter Tanggal Range</label>
                                     <input type="text" id="tgl_filter" class="form-control"
-                                        placeholder="Pilih Tanggal" />
+                                        placeholder="Pilih Rentang Tanggal" />
                                     <input type="hidden" id="tgl_awal" />
                                     <input type="hidden" id="tgl_akhir" />
                                 </div>
 
                                 <!-- Tombol Filter -->
-                                <div class="col-lg-2 col-md-12 mb-3 d-grid">
+                                <div class="col-lg-3 col-md-6 mb-3 d-grid">
                                     <button type="button" onclick="setFilter()"
-                                        class="btn btn-outline-secondary radius-30">
-                                        <i class="bx bx-filter me-1"></i> Filter
+                                        class="btn btn-primary radius-30 w-100">
+                                        <i class="bx bx-filter me-1"></i> Terapkan Filter
                                     </button>
                                 </div>
                             </div>
                         </form>
+                    </div>
+                </div>
+
+                <!-- KPI Summary Cards -->
+                <div class="row mb-4">
+                    <div class="col-12">
+                        <div id="kpiSummaryContainer"></div>
                     </div>
                 </div>
 
@@ -228,6 +274,70 @@
                             <div id="bodyJinayatKasasi" class="collapse show">
                                 <div class="card-body">
                                     <div id="tabelPerkaraJinayatKasasi"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- NEW: Perkara Banding Section -->
+                <div class="row">
+                    <div class="col-12">
+                        <div class="card card-collapsible">
+                            <div class="card-header d-flex justify-content-between align-items-center">
+                                <span><i class="bx bx-gavel me-2"></i> Monitoring Perkara Banding</span>
+                                <button class="btn btn-sm btn-light btn-collapse" type="button"
+                                    data-bs-toggle="collapse" data-bs-target="#bodyPerkaraBanding" aria-expanded="true"
+                                    aria-label="Toggle Perkara Banding">
+                                    <i class="bx bx-chevron-up"></i>
+                                </button>
+                            </div>
+                            <div id="bodyPerkaraBanding" class="collapse show">
+                                <div class="card-body">
+                                    <div id="tabelPerkaraBanding"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- NEW: Statistik Kasasi Section -->
+                <div class="row">
+                    <div class="col-12">
+                        <div class="card card-collapsible">
+                            <div class="card-header d-flex justify-content-between align-items-center">
+                                <span><i class="bx bx-bar-chart-square me-2"></i> Statistik Perkara Kasasi</span>
+                                <button class="btn btn-sm btn-light btn-collapse" type="button"
+                                    data-bs-toggle="collapse" data-bs-target="#bodyStatistikKasasi" aria-expanded="true"
+                                    aria-label="Toggle Statistik Kasasi">
+                                    <i class="bx bx-chevron-up"></i>
+                                </button>
+                            </div>
+                            <div id="bodyStatistikKasasi" class="collapse show">
+                                <div class="card-body">
+                                    <!-- Container untuk chart (tingkat pertama) atau tabel (MS Aceh) -->
+                                    <div id="containerStatistikKasasi"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- NEW: Status Sinkronisasi Section (Hanya untuk MS Aceh) -->
+                <div class="row" id="sectionSinkronisasi" style="display: none;">
+                    <div class="col-12">
+                        <div class="card card-collapsible">
+                            <div class="card-header d-flex justify-content-between align-items-center">
+                                <span><i class="bx bx-sync me-2"></i> Status Sinkronisasi Database</span>
+                                <button class="btn btn-sm btn-light btn-collapse" type="button"
+                                    data-bs-toggle="collapse" data-bs-target="#bodySinkronisasi" aria-expanded="true"
+                                    aria-label="Toggle Sinkronisasi">
+                                    <i class="bx bx-chevron-up"></i>
+                                </button>
+                            </div>
+                            <div id="bodySinkronisasi" class="collapse show">
+                                <div class="card-body">
+                                    <div id="tabelSinkronisasi"></div>
                                 </div>
                             </div>
                         </div>
