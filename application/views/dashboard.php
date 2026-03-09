@@ -38,11 +38,18 @@
             background: #fff;
             transition: box-shadow .2s ease;
         }
+
         /* Reserve space untuk konten dinamis - kurangi CLS (Lighthouse) */
-        #tabelEksekusi, #tabelEksekusiHT, #tabelPerkaraJinayat, #tabelPerkaraJinayatKasasi {
+        #tabelEksekusi,
+        #tabelEksekusiHT,
+        #tabelPerkaraJinayat,
+        #tabelPerkaraJinayatKasasi {
             min-height: 180px;
         }
-        #chartBebanKerja, #grafikBebanKerja, #chartPerkaraJinayat {
+
+        #chartBebanKerja,
+        #grafikBebanKerja,
+        #chartPerkaraJinayat {
             min-height: 200px;
         }
 
@@ -51,9 +58,10 @@
             cursor: help;
             transition: transform 0.2s ease, box-shadow 0.2s ease;
         }
+
         .kpi-card:hover {
             transform: translateY(-2px);
-            box-shadow: 0 4px 12px rgba(0,0,0,0.1) !important;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1) !important;
         }
 
         /* Custom Tooltip Style */
@@ -61,6 +69,7 @@
             opacity: 1 !important;
             pointer-events: none;
         }
+
         .custom-tooltip .tooltip-inner {
             background-color: #343a40;
             color: #fff;
@@ -70,6 +79,7 @@
             max-width: 200px;
             text-align: center;
         }
+
         .custom-tooltip .tooltip-arrow::before {
             border-top-color: #343a40;
         }
@@ -86,7 +96,8 @@
                     <div class="user-box dropdown">
                         <a class="d-flex align-items-center nav-link dropdown-toggle dropdown-toggle-nocaret" href="#"
                             role="button" aria-expanded="false">
-                            <img src="assets/images/icons/chair.svg" class="logo-icon" alt="Logo MRTG" width="40" height="40">
+                            <img src="assets/images/icons/chair.svg" class="logo-icon" alt="Logo MRTG" width="40"
+                                height="40">
                             <div class="user-info ps-3">
                                 <h4 class="logo-text">MRTG (Monitoring Kinerja Satuan Kerja)</h4>
                             </div>
@@ -100,8 +111,15 @@
         <!--start page wrapper -->
         <div class="page-wrapper">
             <div class="page-content">
-                <div class="card sticky-filter">
-                    <div class="card-body">
+                <div class="card sticky-filter card-collapsible">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <span><i class="bx bx-bar-chart-alt-2 me-2"></i> Filter Data</span>
+                        <button class="btn btn-sm btn-light btn-collapse" type="button" data-bs-toggle="collapse"
+                            data-bs-target="#bodyFilter" aria-expanded="true" aria-label="Toggle Beban Perkara">
+                            <i class="bx bx-chevron-up"></i>
+                        </button>
+                    </div>
+                    <div class="card-body collapse show" id="bodyFilter">
                         <form id="formFilter">
                             <div class="row align-items-end">
                                 <!-- Satuan Kerja -->
@@ -139,8 +157,7 @@
 
                                 <!-- Tombol Filter -->
                                 <div class="col-lg-3 col-md-6 mb-3 d-grid">
-                                    <button type="button" onclick="setFilter()"
-                                        class="btn btn-primary radius-30 w-100">
+                                    <button type="button" onclick="setFilter()" class="btn btn-primary radius-30 w-100">
                                         <i class="bx bx-filter me-1"></i> Terapkan Filter
                                     </button>
                                 </div>
@@ -353,7 +370,7 @@
                 class='bx bxs-up-arrow-alt'></i></a>
 
         <footer class="page-footer">
-            <p class="mb-0">Copyright © 2025. All right reserved.</p>
+            <p class="mb-0">Copyright © 2026. All right reserved.</p>
         </footer>
     </div>
     <!--end wrapper-->
