@@ -24,12 +24,22 @@ class Model extends CI_Model
                 }
             }
 
-            $this->db->limit(1000); // atau jumlah yang wajar
-            
             return $this->db->get($tabel);
         } catch (Exception $e) {
             return 0;
         }
+    }
+
+    public function get_tahun()
+    {
+        $this->db->select("
+        YEAR(tanggal_pendaftaran) AS tahun
+        ", false);
+
+        $this->db->from('fact_perkara');
+        $this->db->group_by('YEAR(tanggal_pendaftaran)');
+        $this->db->order_by('YEAR(tanggal_pendaftaran)', 'DESC');
+        return $this->db->get()->result();
     }
 
     public function get_chart_beban_perkara()
@@ -123,14 +133,14 @@ class Model extends CI_Model
             COUNT(j.jenis_perkara_id) AS jumlah
         ', false);
 
-        $this->db->from('fact_perkara_jinayat j');
+        $this->db->from('fact_perkara j');
         $this->db->join(
             'dim_jenis_perkara r',
             'j.jenis_perkara_id = r.jenis_perkara_id',
             'right'
         );
 
-        $this->db->where('r.jenis_perkara_id >=', 501);
+        $this->db->where('r.jenis_perkara_id >=', 500);
         $this->db->where('r.jenis_perkara_id <=', 509);
 
         // filter satker (opsional)
@@ -148,6 +158,429 @@ class Model extends CI_Model
         $this->db->order_by('r.jenis_perkara_id', 'ASC');
 
         return $this->db->get()->result();
+    }
+
+    public function get_chart_perdata_tepat_waktu($kode_satker, $tahun)
+    # MENDAPATKAN JUMLAH PERKARA PUTUS TEPAT WAKTU
+    {
+        $this->db->select("
+        COUNT(CASE 
+            WHEN NOT (
+                jenis_perkara_id BETWEEN 500 AND 509
+                OR jenis_perkara_id BETWEEN 250 AND 260
+            )
+        THEN 1 END) AS jumlah_perdata,
+
+        COUNT(CASE 
+            WHEN NOT (
+                jenis_perkara_id BETWEEN 500 AND 509
+                OR jenis_perkara_id BETWEEN 250 AND 260
+            )
+            AND tanggal_putusan < DATE_ADD(tanggal_pendaftaran, INTERVAL 5 MONTH)
+        THEN 1 END) AS jumlah_tepat_waktu_perdata
+        ", false);
+
+        $this->db->from('fact_perkara');
+
+        $this->db->where('tanggal_putusan IS NOT NULL', null, false);
+        if (!empty($kode_satker) && $kode_satker != '401582') {
+            $this->db->where('kode_satker', $kode_satker);
+        }
+
+        // filter tanggal (opsional)
+        if (!empty($tahun)) {
+            $this->db->where('YEAR(tanggal_putusan)', $tahun);
+        }
+
+        return $this->db->get()->result();
+    }
+
+    public function get_tabel_perdata_tepat_waktu($kode_satker, $tahun)
+    {
+        $this->db->select("
+        MONTH(tanggal_putusan) as bulan,
+        
+        COUNT(CASE 
+            WHEN NOT (
+                jenis_perkara_id BETWEEN 500 AND 509
+                OR jenis_perkara_id BETWEEN 250 AND 260
+            )
+            AND tanggal_putusan < DATE_ADD(tanggal_pendaftaran, INTERVAL 3 MONTH)
+        THEN 1 END) AS diputus_sd_3_bulan,
+
+        COUNT(CASE 
+            WHEN NOT (
+                jenis_perkara_id BETWEEN 500 AND 509
+                OR jenis_perkara_id BETWEEN 250 AND 260
+            )
+            AND tanggal_putusan >= DATE_ADD(tanggal_pendaftaran, INTERVAL 3 MONTH)
+            AND tanggal_putusan < DATE_ADD(tanggal_pendaftaran, INTERVAL 5 MONTH)
+        THEN 1 END) AS diputus_3_sd_5_bulan,
+
+        COUNT(CASE 
+            WHEN NOT (
+                jenis_perkara_id BETWEEN 500 AND 509
+                OR jenis_perkara_id BETWEEN 250 AND 260
+            )
+            AND tanggal_putusan >= DATE_ADD(tanggal_pendaftaran, INTERVAL 5 MONTH)
+        THEN 1 END) AS diputus_lebih_5_bulan,
+
+        COUNT(CASE 
+            WHEN NOT (
+                jenis_perkara_id BETWEEN 500 AND 509
+                OR jenis_perkara_id BETWEEN 250 AND 260
+            )
+            AND tanggal_putusan < DATE_ADD(tanggal_pendaftaran, INTERVAL 5 MONTH)
+        THEN 1 END) AS jumlah_tepat_waktu,
+
+        COUNT(CASE 
+            WHEN NOT (
+                jenis_perkara_id BETWEEN 500 AND 509
+                OR jenis_perkara_id BETWEEN 250 AND 260
+            )
+        THEN 1 END) AS jumlah_perkara_putus
+        ", false);
+
+        $this->db->from('fact_perkara');
+        $this->db->where('tanggal_putusan IS NOT NULL', null, false);
+
+        if (!empty($kode_satker) && $kode_satker != '401582') {
+            $this->db->where('kode_satker', $kode_satker);
+        }
+
+        if (!empty($tahun)) {
+            $this->db->where('YEAR(tanggal_putusan)', $tahun);
+        }
+
+        $this->db->group_by('MONTH(tanggal_putusan)');
+        $this->db->order_by('MONTH(tanggal_putusan)', 'DESC');
+
+        return $this->db->get()->result();
+    }
+
+    public function get_chart_perkara_ecourt($kode_satker, $tahun)
+    # MENDAPATKAN JUMLAH PERKARA PUTUS TEPAT WAKTU
+    {
+        $this->db->select("
+        COUNT(CASE 
+            WHEN NOT (
+                jenis_perkara_id BETWEEN 500 AND 509
+                OR jenis_perkara_id BETWEEN 250 AND 260
+            )
+        THEN 1 END) AS jumlah_perkara,
+
+        COUNT(CASE 
+            WHEN NOT (
+                jenis_perkara_id BETWEEN 500 AND 509
+                OR jenis_perkara_id BETWEEN 250 AND 260
+            )
+            AND efiling_id IS NOT NULL
+        THEN 1 END) AS jumlah_perkara_ecourt
+        ", false);
+
+        $this->db->from('fact_perkara');
+        $this->db->where('tanggal_pendaftaran IS NOT NULL');
+
+        if (!empty($kode_satker) && $kode_satker != '401582') {
+            $this->db->where('kode_satker', $kode_satker);
+        }
+
+        // filter tanggal (opsional)
+        if (!empty($tahun)) {
+            $this->db->where('YEAR(tanggal_pendaftaran)', $tahun);
+        }
+
+        return $this->db->get()->result();
+    }
+
+    public function get_tabel_perkara_ecourt($kode_satker, $tahun)
+    {
+        $this->db->select("
+        MONTH(tanggal_pendaftaran) as bulan,
+        
+        COUNT(CASE 
+            WHEN NOT (
+                jenis_perkara_id BETWEEN 500 AND 509
+                OR jenis_perkara_id BETWEEN 250 AND 260
+            )
+            AND efiling_id IS NOT NULL
+        THEN 1 END) AS jumlah_perkara_ecourt,
+
+        COUNT(CASE 
+            WHEN NOT (
+                jenis_perkara_id BETWEEN 500 AND 509
+                OR jenis_perkara_id BETWEEN 250 AND 260
+            )
+            AND efiling_id IS NULL
+        THEN 1 END) AS jumlah_perkara_non_ecourt,
+
+        COUNT(CASE 
+            WHEN NOT (
+                jenis_perkara_id BETWEEN 500 AND 509
+                OR jenis_perkara_id BETWEEN 250 AND 260
+            )
+        THEN 1 END) AS jumlah_perkara_masuk
+        ", false);
+
+        $this->db->from('fact_perkara');
+        $this->db->where('tanggal_pendaftaran IS NOT NULL');
+        if (!empty($kode_satker) && $kode_satker != '401582') {
+            $this->db->where('kode_satker', $kode_satker);
+        }
+
+        if (!empty($tahun)) {
+            $this->db->where('YEAR(tanggal_pendaftaran)', $tahun);
+        }
+
+        $this->db->group_by('MONTH(tanggal_pendaftaran)');
+        $this->db->order_by('MONTH(tanggal_pendaftaran)', 'DESC');
+
+        return $this->db->get()->result();
+    }
+
+    public function get_chart_perkara_eberpadu($kode_satker, $tahun)
+    # MENDAPATKAN JUMLAH PERKARA PUTUS TEPAT WAKTU
+    {
+        $this->db->select("
+        COUNT(CASE 
+            WHEN (
+                jenis_perkara_id BETWEEN 500 AND 509
+                OR jenis_perkara_id BETWEEN 250 AND 260
+            )
+        THEN 1 END) AS jumlah_perkara,
+
+        COUNT(CASE 
+            WHEN (
+                jenis_perkara_id BETWEEN 500 AND 509
+                OR jenis_perkara_id BETWEEN 250 AND 260
+            )
+            AND eberpadu_id IS NOT NULL
+        THEN 1 END) AS jumlah_perkara_eberpadu
+        ", false);
+
+        $this->db->from('fact_perkara');
+        $this->db->where('tanggal_pendaftaran IS NOT NULL');
+
+        if (!empty($kode_satker) && $kode_satker != '401582') {
+            $this->db->where('kode_satker', $kode_satker);
+        }
+
+        // filter tanggal (opsional)
+        if (!empty($tahun)) {
+            $this->db->where('YEAR(tanggal_pendaftaran)', $tahun);
+        }
+
+        return $this->db->get()->result();
+    }
+
+    public function get_tabel_perkara_eberpadu($kode_satker, $tahun)
+    {
+        $this->db->select("
+        MONTH(tanggal_pendaftaran) as bulan,
+        
+        COUNT(CASE 
+            WHEN (
+                jenis_perkara_id BETWEEN 500 AND 509
+                OR jenis_perkara_id BETWEEN 250 AND 260
+            )
+            AND eberpadu_id IS NOT NULL
+        THEN 1 END) AS jumlah_perkara_eberpadu,
+
+        COUNT(CASE 
+            WHEN (
+                jenis_perkara_id BETWEEN 500 AND 509
+                OR jenis_perkara_id BETWEEN 250 AND 260
+            )
+            AND eberpadu_id IS NULL
+        THEN 1 END) AS jumlah_perkara_non_eberpadu,
+
+        COUNT(CASE 
+            WHEN (
+                jenis_perkara_id BETWEEN 500 AND 509
+                OR jenis_perkara_id BETWEEN 250 AND 260
+            )
+        THEN 1 END) AS jumlah_perkara_masuk
+        ", false);
+
+        $this->db->from('fact_perkara');
+        $this->db->where('tanggal_pendaftaran IS NOT NULL');
+        if (!empty($kode_satker) && $kode_satker != '401582') {
+            $this->db->where('kode_satker', $kode_satker);
+        }
+
+        if (!empty($tahun)) {
+            $this->db->where('YEAR(tanggal_pendaftaran)', $tahun);
+        }
+
+        $this->db->group_by('MONTH(tanggal_pendaftaran)');
+        $this->db->order_by('MONTH(tanggal_pendaftaran)', 'DESC');
+
+        return $this->db->get()->result();
+    }
+
+    public function get_chart_jinayat_tepat_waktu($kode_satker, $tahun = null)
+    # MENDAPATKAN JUMLAH PERKARA PUTUS TEPAT WAKTU
+    {
+        $this->db->select("
+        COUNT(CASE 
+            WHEN (
+                jenis_perkara_id BETWEEN 500 AND 509
+                OR jenis_perkara_id BETWEEN 250 AND 260
+            )
+        THEN 1 END) AS jumlah_jinayat,
+
+        COUNT(CASE
+            WHEN (
+                jenis_perkara_id BETWEEN 500 AND 509
+                OR jenis_perkara_id BETWEEN 250 AND 260
+            )
+            AND tanggal_putusan < DATE_ADD(tanggal_pendaftaran, INTERVAL 5 MONTH)
+        THEN 1 END) AS jumlah_tepat_waktu_jinayat
+        ", false);
+
+        $this->db->from('fact_perkara');
+
+        $this->db->where('tanggal_putusan IS NOT NULL', null, false);
+        if (!empty($kode_satker) && $kode_satker != '401582') {
+            $this->db->where('kode_satker', $kode_satker);
+        }
+
+        // filter tanggal (opsional)
+        if (!empty($tahun)) {
+            $this->db->where('YEAR(tanggal_putusan)', $tahun);
+        }
+
+        return $this->db->get()->result();
+    }
+
+    public function get_tabel_jinayat_tepat_waktu($kode_satker, $tahun)
+    {
+        $this->db->select("
+        MONTH(tanggal_putusan) as bulan,
+        
+        COUNT(CASE 
+            WHEN (
+                jenis_perkara_id BETWEEN 500 AND 509
+                OR jenis_perkara_id BETWEEN 250 AND 260
+            )
+            AND tanggal_putusan < DATE_ADD(tanggal_pendaftaran, INTERVAL 3 MONTH)
+        THEN 1 END) AS diputus_sd_3_bulan,
+
+        COUNT(CASE 
+            WHEN (
+                jenis_perkara_id BETWEEN 500 AND 509
+                OR jenis_perkara_id BETWEEN 250 AND 260
+            )
+            AND tanggal_putusan >= DATE_ADD(tanggal_pendaftaran, INTERVAL 3 MONTH)
+            AND tanggal_putusan < DATE_ADD(tanggal_pendaftaran, INTERVAL 5 MONTH)
+        THEN 1 END) AS diputus_3_sd_5_bulan,
+
+        COUNT(CASE 
+            WHEN (
+                jenis_perkara_id BETWEEN 500 AND 509
+                OR jenis_perkara_id BETWEEN 250 AND 260
+            )
+            AND tanggal_putusan >= DATE_ADD(tanggal_pendaftaran, INTERVAL 5 MONTH)
+        THEN 1 END) AS diputus_lebih_5_bulan,
+
+        COUNT(CASE 
+            WHEN (
+                jenis_perkara_id BETWEEN 500 AND 509
+                OR jenis_perkara_id BETWEEN 250 AND 260
+            )
+            AND tanggal_putusan < DATE_ADD(tanggal_pendaftaran, INTERVAL 5 MONTH)
+        THEN 1 END) AS jumlah_tepat_waktu,
+
+        COUNT(CASE 
+            WHEN (
+                jenis_perkara_id BETWEEN 500 AND 509
+                OR jenis_perkara_id BETWEEN 250 AND 260
+            )
+        THEN 1 END) AS jumlah_perkara_putus
+        ", false);
+
+        $this->db->from('fact_perkara');
+        $this->db->where('tanggal_putusan IS NOT NULL', null, false);
+
+        if (!empty($kode_satker) && $kode_satker != '401582') {
+            $this->db->where('kode_satker', $kode_satker);
+        }
+
+        if (!empty($tahun)) {
+            $this->db->where('YEAR(tanggal_putusan)', $tahun);
+        }
+
+        $this->db->group_by('MONTH(tanggal_putusan)');
+        $this->db->order_by('MONTH(tanggal_putusan)', 'DESC');
+
+        return $this->db->get()->result();
+    }
+
+    public function get_tabel_prodeo($kode_satker = null, $tahun = null)
+    {
+        $where_satker = "";
+        if (!empty($kode_satker) && $kode_satker != '401582') {
+            $where_satker = " AND kode_satker = '" . $this->db->escape_str($kode_satker) . "' ";
+        }
+
+        $where_daftar = "";
+        $where_putus = "";
+
+        if (!empty($tahun)) {
+            $where_daftar = " AND YEAR(tanggal_pendaftaran) = '" . $this->db->escape_str($tahun) . "' ";
+            $where_putus = " AND YEAR(tanggal_putusan) = '" . $this->db->escape_str($tahun) . "' ";
+        }
+
+        $sql = "
+            SELECT 
+                m.bulan,
+                COALESCE(SUM(t.prodeo_diterima),0) AS prodeo_diterima,
+                COALESCE(SUM(t.prodeo_diputus),0) AS prodeo_diputus
+            FROM
+            (
+                SELECT 1 AS bulan UNION SELECT 2 UNION SELECT 3 UNION SELECT 4
+                UNION SELECT 5 UNION SELECT 6 UNION SELECT 7 UNION SELECT 8
+                UNION SELECT 9 UNION SELECT 10 UNION SELECT 11 UNION SELECT 12
+            ) m
+            LEFT JOIN
+            (
+                SELECT 
+                    MONTH(tanggal_pendaftaran) AS bulan,
+                    COUNT(*) AS prodeo_diterima,
+                    0 AS prodeo_diputus
+                FROM fact_perkara
+                WHERE NOT (
+                    jenis_perkara_id BETWEEN 500 AND 509
+                    OR jenis_perkara_id BETWEEN 250 AND 260
+                )
+                AND prodeo = 1
+                $where_satker
+                $where_daftar
+                GROUP BY MONTH(tanggal_pendaftaran)
+
+                UNION ALL
+
+                SELECT 
+                    MONTH(tanggal_putusan) AS bulan,
+                    0 AS prodeo_diterima,
+                    COUNT(*) AS prodeo_diputus
+                FROM fact_perkara
+                WHERE NOT (
+                    jenis_perkara_id BETWEEN 500 AND 509
+                    OR jenis_perkara_id BETWEEN 250 AND 260
+                )
+                AND prodeo = 1
+                AND tanggal_putusan IS NOT NULL
+                $where_satker
+                $where_putus
+                GROUP BY MONTH(tanggal_putusan)
+
+            ) t ON m.bulan = t.bulan
+            GROUP BY m.bulan
+            ORDER BY m.bulan DESC
+        ";
+
+        return $this->db->query($sql)->result();
     }
 
     public function get_kpi_summary($kode_satker = null, $filter_tahun = null)

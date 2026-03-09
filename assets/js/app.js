@@ -23,6 +23,10 @@
 	// Chart instances
 	let pieChart = null;
 	let chartJinayat = null;
+	let chartPerdataTepatWaktu = null;
+	let chartJinayatTepatWaktu = null;
+	let chartPerkaraEcourt = null;
+	let chartPerkaraEBerpadu = null;
 
 	// Header color classes (untuk optimasi switching)
 	const HEADER_COLORS = ['headercolor1', 'headercolor2', 'headercolor3', 'headercolor4',
@@ -212,6 +216,83 @@
 		};
 	}
 
+	function getDataTableConfigSAKIP(options = {}) {
+		const {
+			order = [[0, 'desc']],
+			pageLength = 10,
+			columnDefs = [],
+			buttons = [],
+			onInitComplete = null
+		} = options;
+
+		return {
+			order: order,
+			pageLength: pageLength,
+			lengthMenu: [
+				[10, 25, 50, 100],
+				['10 baris', '25 baris', '50 baris', '100 baris']
+			],
+			dom: "<'row mt-2'<'col-sm-12'B>>" +
+				"<'row mb-3'" +
+				"  <'col-sm-12 col-md-4'd>" +
+				"  <'col-sm-12 col-md-4'l>" +
+				"  <'col-sm-12 col-md-4'f>" +
+				">" +
+				"<'row'<'col-sm-12'tr>>" +
+				"<'row mt-2'" +
+				"  <'col-sm-12 col-md-5'i>" +
+				"  <'col-sm-12 col-md-7'p>" +
+				">",
+			buttons: buttons.length > 0 ? buttons : [
+				{
+					extend: 'excelHtml5',
+					text: '<i class="bx bx-spreadsheet me-1"></i> Export Excel',
+					className: 'btn btn-sm btn-outline-success me-2',
+					exportOptions: {
+						columns: ':visible',
+						format: {
+							body: (data) => {
+								const temp = document.createElement('div');
+								temp.innerHTML = data;
+								return temp.textContent || temp.innerText || '';
+							}
+						}
+					}
+				},
+				{
+					extend: 'colvis',
+					text: '<i class="bx bx-columns me-1"></i> Kolom',
+					className: 'btn btn-sm btn-outline-secondary'
+				}
+			],
+			language: {
+				search: '',
+				searchPlaceholder: 'Cari bulan...',
+				lengthMenu: 'Tampilkan _MENU_',
+				info: 'Menampilkan _START_ - _END_ dari _TOTAL_ bulan',
+				infoEmpty: 'Tidak ada data',
+				infoFiltered: '(difilter dari _MAX_ total bulan)',
+				zeroRecords: 'Tidak ditemukan bulan yang sesuai',
+				paginate: {
+					first: '<i class="bx bx-chevrons-left"></i>',
+					last: '<i class="bx bx-chevrons-right"></i>',
+					next: '<i class="bx bx-chevron-right"></i>',
+					previous: '<i class="bx bx-chevron-left"></i>'
+				}
+			},
+			columnDefs: columnDefs,
+			drawCallback: function () {
+				const api = this.api();
+				api.column(0, { search: 'applied', order: 'applied', page: 'current' })
+					.nodes()
+					.each(function (cell, i) {
+						cell.innerHTML = api.page.info().start + i + 1;
+					});
+			},
+			initComplete: onInitComplete || function () { }
+		};
+	}
+
 	/**
 	 * Destroy DataTable dengan error handling
 	 */
@@ -294,23 +375,41 @@
 	function getSatker(select) {
 		const kode = select.value;
 		const tingkat = select.options[select.selectedIndex].parentNode.getAttribute('label');
-
-		// Tentukan mode berdasarkan pilihan
-		if (kode === 'all-pertama' || tingkat === 'TINGKAT PERTAMA') {
-			// Mode: Semua satker tingkat pertama atau satker pertama spesifik
-			loadDashboardPerkara(kode);
-		} else if (kode === '401582' || tingkat === 'TINGKAT BANDING') {
-			// Mode: Tingkat banding
-			loadDashboardPerkara(kode);
+		const sakip = !!document.getElementById('sakip');
+		console.log(sakip);
+		if (sakip) {
+			if (kode === 'all-pertama' || tingkat === 'TINGKAT PERTAMA') {
+				// Mode: Semua satker tingkat pertama atau satker pertama spesifik
+				loadDashboardSAKIP(kode);
+			} else if (kode === '401582' || tingkat === 'TINGKAT BANDING') {
+				// Mode: Tingkat banding
+				loadDashboardSAKIP(kode);
+			} else {
+				// Default: load dashboard dengan kode satker
+				loadDashboardSAKIP(kode);
+			}
 		} else {
-			// Default: load dashboard dengan kode satker
-			loadDashboardPerkara(kode);
+			// Tentukan mode berdasarkan pilihan
+			if (kode === 'all-pertama' || tingkat === 'TINGKAT PERTAMA') {
+				// Mode: Semua satker tingkat pertama atau satker pertama spesifik
+				loadDashboardPerkara(kode);
+			} else if (kode === '401582' || tingkat === 'TINGKAT BANDING') {
+				// Mode: Tingkat banding
+				loadDashboardPerkara(kode);
+			} else {
+				// Default: load dashboard dengan kode satker
+				loadDashboardPerkara(kode);
+			}
 		}
 	}
 
 	function setFilter() {
 		const satker = document.getElementById('satker')?.value;
-		if (satker) {
+		const sakip = !!document.getElementById('sakip');
+
+		if (satker && sakip) {
+			loadDashboardSAKIP(satker);
+		} else if (satker) {
 			loadDashboardPerkara(satker);
 		}
 	}
@@ -325,7 +424,7 @@
 				locale: {
 					firstDayOfWeek: 1 // Monday first
 				},
-				onChange: function(selectedDates, dateStr, instance) {
+				onChange: function (selectedDates, dateStr, instance) {
 					if (selectedDates.length === 2) {
 						const startDate = formatDate(selectedDates[0]);
 						const endDate = formatDate(selectedDates[1]);
@@ -351,10 +450,10 @@
 				type: 'GET',
 				data: data,
 				dataType: 'json',
-				beforeSend: function() {
+				beforeSend: function () {
 					$('#kpiSummaryContainer').html(`
 						<div class="row g-2">
-							${[1,2,3,4,5].map(() => `
+							${[1, 2, 3, 4, 5].map(() => `
 								<div class="col">
 									<div class="card border-0 shadow-sm">
 										<div class="card-body py-2">
@@ -370,16 +469,16 @@
 					`);
 				}
 			})
-			.done(function(res) {
-				// Dispose old tooltips before replacing content
-				$('#kpiSummaryContainer [data-bs-toggle="tooltip"]').each(function() {
-					const tooltip = bootstrap.Tooltip.getInstance(this);
-					if (tooltip) {
-						tooltip.dispose();
-					}
-				});
+				.done(function (res) {
+					// Dispose old tooltips before replacing content
+					$('#kpiSummaryContainer [data-bs-toggle="tooltip"]').each(function () {
+						const tooltip = bootstrap.Tooltip.getInstance(this);
+						if (tooltip) {
+							tooltip.dispose();
+						}
+					});
 
-				$('#kpiSummaryContainer').html(`
+					$('#kpiSummaryContainer').html(`
 					<div class="row g-2">
 						<div class="col">
 							<div class="card kpi-card border-0 shadow-sm border-start border-3 border-primary" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-custom-class="custom-tooltip" title="Perkara yang didaftarkan pada tahun berjalan">
@@ -431,19 +530,19 @@
 					</div>
 				`);
 
-				// Initialize Bootstrap tooltips with proper configuration
-				const tooltipTriggerList = $('#kpiSummaryContainer [data-bs-toggle="tooltip"]');
-				tooltipTriggerList.each(function() {
-					new bootstrap.Tooltip(this, {
-						delay: { show: 300, hide: 100 },
-						trigger: 'hover focus',
-						boundary: 'viewport'
+					// Initialize Bootstrap tooltips with proper configuration
+					const tooltipTriggerList = $('#kpiSummaryContainer [data-bs-toggle="tooltip"]');
+					tooltipTriggerList.each(function () {
+						new bootstrap.Tooltip(this, {
+							delay: { show: 300, hide: 100 },
+							trigger: 'hover focus',
+							boundary: 'viewport'
+						});
 					});
-				});
 
-				resolve();
-			})
-			.fail(reject);
+					resolve();
+				})
+				.fail(reject);
 		});
 	}
 
@@ -492,203 +591,426 @@
 		}
 	}
 
+	async function loadDashboardSAKIP() {
+		const kode = document.getElementById('satker').value;
+		const tahun = document.getElementById('tahun').value;
+
+		showLoading("Menyiapkan dashboard...");
+
+		try {
+			const requests = [
+				loadPiePerdataTepat(kode, tahun),
+				loadTabelPerdataTepat(kode, tahun),
+				loadPiePerkaraEcourt(kode, tahun),
+				loadTabelPerkaraEcourt(kode, tahun),
+				loadPiePerkaraEBerpadu(kode, tahun),
+				loadTabelPerkaraEBerpadu(kode, tahun),
+				loadPieJinayatTepat(kode, tahun),
+				loadTabelJinayatTepat(kode, tahun),
+				loadTabelProdeo(kode, tahun)
+			];
+
+			await Promise.all(requests);
+			notifikasi("Menampilkan data satuan kerja", 1);
+		} catch (err) {
+			console.error("Dashboard Error:", err);
+			notifikasi("Terjadi kesalahan saat memuat dashboard", 0);
+		} finally {
+			hideLoading();
+		}
+	}
+
 	// ============================================
 	// TABLE LOADING FUNCTIONS
 	// ============================================
 
 	function loadTabelEksekusi(kode, tgl_awal = null, tgl_akhir = null) {
 		return new Promise((resolve, reject) => {
-			const postData = { kode, ...(tgl_awal && tgl_akhir && { tgl_awal, tgl_akhir }) };
 			destroyDataTable('#tabelEksekusiData');
 
-			$.post('show_eksekusi', postData)
-				.done(function (response) {
-					try {
-						const data = typeof response === 'string' ? JSON.parse(response) : response;
-						const { data_eksekusi } = data;
-						const $container = $('#tabelEksekusi').empty();
-
-						if (!data_eksekusi?.length) {
-							$container.html(renderEmptyState('Belum Ada Perkara Eksekusi, atau belum ada sinkronisasi ke satker daerah.'));
-							resolve();
-							return;
-						}
-
-						const rows = data_eksekusi.map((row, i) => `
+			$('#tabelEksekusi').html(`
+				<div class="table-responsive">
+					<table id="tabelEksekusiData" class="table table-striped table-bordered table-hover align-middle">
+						<thead class="table-dark">
 							<tr>
-								<td class="text-center align-middle">${i + 1}</td>
-								<td class="align-middle"><small class="fw-semibold">${row.nama_satker ?? '-'}</small></td>
-								<td class="align-middle"><span class="fw-semibold text-primary">${row.nomor_perkara_pn ?? '-'}</span></td>
-								<td class="align-middle"><span class="fw-semibold text-primary">${row.nomor_register_eksekusi ?? '-'}</span></td>
-								<td class="text-center align-middle" data-order="${row.permohonan_eksekusi}">${badgeTahapan(row.permohonan_eksekusi)}</td>
-								<td class="text-center align-middle">${badgeTahapan(row.penetapan_teguran_eksekusi)}</td>
-								<td class="text-center align-middle">${badgeTahapan(row.pelaksanaan_teguran_eksekusi)}</td>
-								<td class="text-center align-middle">${badgeTahapan(row.penetapan_sita_eksekusi)}</td>
-								<td class="text-center align-middle">${badgeTahapan(row.pelaksanaan_sita_eksekusi)}</td>
+								<th class="text-center" style="width:45px">No</th>
+								<th>Nama Satker</th>
+								<th>No. Perkara Perdata</th>
+								<th>No. Perkara Eksekusi</th>
+								<th class="text-center">Permohonan</th>
+								<th class="text-center">Penetapan Teguran</th>
+								<th class="text-center">Pelaksanaan Teguran</th>
+								<th class="text-center">Penetapan Sita</th>
+								<th class="text-center">Pelaksanaan Sita</th>
 							</tr>
-						`).join('');
+						</thead>
+						<tfoot class="table-light">
+							<tr>
+								<th colspan="9" class="text-end pe-3">
+									Total Perkara :
+									<span id="totalPerkaraBadgeEksekusi" class="badge bg-dark fs-6">0</span>
+								</th>
+							</tr>
+						</tfoot>
+					</table>
+				</div>
+			`);
 
-						$container.html(`
-							<div class="table-responsive">
-								<table id="tabelEksekusiData" class="table table-striped table-bordered table-hover align-middle" style="width:100%">
-									<thead class="table-dark">
-										<tr>
-											<th class="text-center" style="width:45px">No</th>
-											<th>Nama Satker</th>
-											<th>No. Perkara Perdata</th>
-											<th>No. Perkara Eksekusi</th>
-											<th class="text-center">Permohonan</th>
-											<th class="text-center">Penetapan Teguran</th>
-											<th class="text-center">Pelaksanaan Teguran</th>
-											<th class="text-center">Penetapan Sita</th>
-											<th class="text-center">Pelaksanaan Sita</th>
-										</tr>
-									</thead>
-									<tbody>${rows}</tbody>
-									<tfoot class="table-light">
-										<tr>
-											<th colspan="9" class="text-end pe-3">
-												Total Perkara: <span class="badge bg-dark fs-6">${data_eksekusi.length}</span>
-											</th>
-										</tr>
-									</tfoot>
-								</table>
-							</div>
-						`);
+			const table = $('#tabelEksekusiData').DataTable({
+				processing: true,
+				serverSide: true,
+				destroy: true,
+				responsive: false,
+				scrollX: true,
+				autoWidth: false,
+				language: {
+					// Opsi 1: Mengganti dengan format custom
+					info: "Menampilkan _START_ sampai _END_ dari _TOTAL_ perkara",
 
-						$('#tabelEksekusiData').DataTable(getDataTableConfig({
-							order: [[4, 'desc']],
-							columnDefs: [
-								{ targets: 0, orderable: false, searchable: false, className: 'text-center' },
-								{ targets: [4, 5, 6, 7, 8], className: 'text-center' }
-							],
-							buttons: [{
-								extend: 'excelHtml5',
-								text: '<i class="bx bx-spreadsheet me-1"></i> Export Excel',
-								title: 'Data Eksekusi Perkara',
-								className: 'btn btn-sm btn-outline-success me-2',
-								exportOptions: {
-									columns: ':visible',
-									format: {
-										body: (data) => {
-											const temp = document.createElement('div');
-											temp.innerHTML = data;
-											return temp.textContent || temp.innerText || '';
-										}
-									}
-								}
-							}, {
-								extend: 'colvis',
-								text: '<i class="bx bx-columns me-1"></i> Kolom',
-								className: 'btn btn-sm btn-outline-secondary'
-							}],
-							onInitComplete: resolve
-						}));
+					// Opsi 2: Menghilangkan sama sekali
+					// info: "",
 
-					} catch (e) {
-						console.error('Gagal parsing JSON:', e);
-						$('#tabelEksekusi').html('<div class="alert alert-danger d-flex align-items-center" role="alert"><i class="bx bx-error-circle fs-4 me-2"></i><div>Gagal memuat data eksekusi. Silakan coba lagi.</div></div>');
-						reject(e);
+					// Opsi 3: Hanya menampilkan total
+					// info: "Total: _TOTAL_ data",
+
+					// Mengganti teks lainnya (opsional)
+					infoEmpty: "Menampilkan 0 sampai 0 dari 0 perkara]",
+					infoFiltered: "(disaring dari _MAX_ total perkara)",
+					lengthMenu: "Tampilkan _MENU_ perkara per halaman",
+					loadingRecords: "Memuat...",
+					processing: "Memproses...",
+					search: "Cari:",
+					zeroRecords: "Tidak ditemukan perkara yang sesuai",
+					paginate: {
+						first: "Pertama",
+						last: "Terakhir",
+						next: "Selanjutnya",
+						previous: "Sebelumnya"
 					}
-				})
-				.fail(reject);
+				},
+				ajax: {
+					url: 'show_eksekusi',
+					type: 'POST',
+					data: function (d) {
+						d.kode = kode;
+						d.tgl_awal = tgl_awal;
+						d.tgl_akhir = tgl_akhir;
+					},
+					dataSrc: function (json) {
+						// Update badge saat data berhasil diambil
+						updateTotalBadge(json.recordsFiltered || json.recordsTotal || 0);
+						return json.data;
+					},
+					error: function (xhr) {
+						reject(xhr);
+					}
+				},
+
+				order: [[4, 'desc']],
+
+				columns: [
+					{ data: 0, className: 'text-center align-middle', orderable: false, searchable: false },
+					{ data: 1 },
+					{ data: 2 },
+					{ data: 3 },
+					{
+						data: 4,
+						className: 'text-center align-middle',
+						render: function (data, type) {
+
+							// untuk sorting & search tetap pakai raw data
+							if (type === 'sort' || type === 'type') {
+								return data;
+							}
+
+							return badgeTahapan(data);
+						}
+					},
+					{
+						data: 5,
+						className: 'text-center align-middle',
+						render: function (data, type) {
+
+							// untuk sorting & search tetap pakai raw data
+							if (type === 'sort' || type === 'type') {
+								return data;
+							}
+
+							return badgeTahapan(data);
+						}
+					},
+					{
+						data: 6,
+						className: 'text-center align-middle',
+						render: function (data, type) {
+
+							// untuk sorting & search tetap pakai raw data
+							if (type === 'sort' || type === 'type') {
+								return data;
+							}
+
+							return badgeTahapan(data);
+						}
+					},
+					{
+						data: 7,
+						className: 'text-center align-middle',
+						render: function (data, type) {
+
+							// untuk sorting & search tetap pakai raw data
+							if (type === 'sort' || type === 'type') {
+								return data;
+							}
+
+							return badgeTahapan(data);
+						}
+					},
+					{
+						data: 8,
+						className: 'text-center align-middle',
+						render: function (data, type) {
+
+							// untuk sorting & search tetap pakai raw data
+							if (type === 'sort' || type === 'type') {
+								return data;
+							}
+
+							return badgeTahapan(data);
+						}
+					},
+				],
+
+				dom: 'Bfrtip',
+
+				buttons: [
+					{
+						extend: 'excelHtml5',
+						text: '<i class="bx bx-spreadsheet me-1"></i> Export Excel',
+						title: 'Data Perkara Eksekusi',
+						className: 'btn btn-sm btn-outline-success me-2'
+					},
+					{
+						extend: 'colvis',
+						text: '<i class="bx bx-columns me-1"></i> Kolom',
+						className: 'btn btn-sm btn-outline-secondary'
+					}
+				],
+
+				// Gunakan drawCallback untuk update setiap kali tabel di-render
+				drawCallback: function (settings) {
+					const json = settings.json;
+					if (json) {
+						updateTotalBadge(json.recordsFiltered || 0);
+					}
+					resolve();
+				}
+			});
+
+			// Fungsi helper untuk update badge
+			function updateTotalBadge(total) {
+				$('#totalPerkaraBadgeEksekusi').text(total.toLocaleString('id-ID'));
+			}
+
+			// Fallback: Update badge setelah ajax complete
+			$('#totalPerkaraBadgeEksekusi').on('xhr.dt', function (e, settings, json) {
+				if (json) {
+					updateTotalBadge(json.recordsFiltered || 0);
+				}
+			});
 		});
 	}
 
 	function loadTabelEksekusiHT(kode, tgl_awal = null, tgl_akhir = null) {
 		return new Promise((resolve, reject) => {
-			const postData = { kode, ...(tgl_awal && tgl_akhir && { tgl_awal, tgl_akhir }) };
 			destroyDataTable('#tabelEksekusiHTData');
 
-			$.post('show_eksekusi_ht', postData)
-				.done(function (response) {
-					try {
-						const data = typeof response === 'string' ? JSON.parse(response) : response;
-						const { data_eksekusi_ht } = data;
-						const $container = $('#tabelEksekusiHT').empty();
-
-						if (!data_eksekusi_ht?.length) {
-							$container.html(renderEmptyState('Belum Ada Perkara Eksekusi HT, atau belum ada sinkronisasi ke satker daerah.'));
-							resolve();
-							return;
-						}
-
-						const rows = data_eksekusi_ht.map((row, i) => `
+			$('#tabelEksekusiHT').html(`
+				<div class="table-responsive">
+					<table id="tabelEksekusiHTData" class="table table-striped table-bordered table-hover align-middle">
+						<thead class="table-dark">
 							<tr>
-								<td class="text-center align-middle">${i + 1}</td>
-								<td class="align-middle"><small class="fw-semibold">${row.nama_satker ?? '-'}</small></td>
-								<td class="align-middle"><span class="fw-semibold text-primary">${row.nomor_register_eksekusi ?? '-'}</span></td>
-								<td class="text-center align-middle" data-order="${row.permohonan_eksekusi}">${badgeTahapan(row.permohonan_eksekusi)}</td>
-								<td class="text-center align-middle">${badgeTahapan(row.penetapan_teguran_eksekusi)}</td>
-								<td class="text-center align-middle">${badgeTahapan(row.pelaksanaan_teguran_eksekusi)}</td>
-								<td class="text-center align-middle">${badgeTahapan(row.penetapan_sita_eksekusi)}</td>
-								<td class="text-center align-middle">${badgeTahapan(row.pelaksanaan_sita_eksekusi)}</td>
+								<th class="text-center" style="width:45px">No</th>
+								<th>Nama Satker</th>
+								<th>No. Perkara Eksekusi</th>
+								<th class="text-center">Permohonan</th>
+								<th class="text-center">Penetapan Teguran</th>
+								<th class="text-center">Pelaksanaan Teguran</th>
+								<th class="text-center">Penetapan Sita</th>
+								<th class="text-center">Pelaksanaan Sita</th>
 							</tr>
-						`).join('');
+						</thead>
+						<tfoot class="table-light">
+							<tr>
+								<th colspan="8" class="text-end pe-3">
+									Total Perkara :
+									<span id="totalPerkaraBadgeEksekusiHT" class="badge bg-dark fs-6">0</span>
+								</th>
+							</tr>
+						</tfoot>
+					</table>
+				</div>
+			`);
 
-						$container.html(`
-							<div class="table-responsive">
-								<table id="tabelEksekusiHTData" class="table table-striped table-bordered table-hover align-middle" style="width:100%">
-									<thead class="table-dark">
-										<tr>
-											<th class="text-center" style="width:45px">No</th>
-											<th>Nama Satker</th>
-											<th>No. Perkara Eksekusi</th>
-											<th class="text-center">Permohonan</th>
-											<th class="text-center">Penetapan Teguran</th>
-											<th class="text-center">Pelaksanaan Teguran</th>
-											<th class="text-center">Penetapan Sita</th>
-											<th class="text-center">Pelaksanaan Sita</th>
-										</tr>
-									</thead>
-									<tbody>${rows}</tbody>
-									<tfoot class="table-light">
-										<tr>
-											<th colspan="8" class="text-end pe-3">
-												Total Perkara: <span class="badge bg-dark fs-6">${data_eksekusi_ht.length}</span>
-											</th>
-										</tr>
-									</tfoot>
-								</table>
-							</div>
-						`);
+			const table = $('#tabelEksekusiHTData').DataTable({
+				processing: true,
+				serverSide: true,
+				destroy: true,
+				responsive: false,
+				scrollX: true,
+				autoWidth: false,
+				language: {
+					// Opsi 1: Mengganti dengan format custom
+					info: "Menampilkan _START_ sampai _END_ dari _TOTAL_ perkara",
 
-						$('#tabelEksekusiHTData').DataTable(getDataTableConfig({
-							order: [[3, 'desc']],
-							columnDefs: [
-								{ targets: 0, orderable: false, searchable: false, className: 'text-center' },
-								{ targets: [3, 4, 5, 6, 7], className: 'text-center' }
-							],
-							buttons: [{
-								extend: 'excelHtml5',
-								text: '<i class="bx bx-spreadsheet me-1"></i> Export Excel',
-								title: 'Data Eksekusi Perkara Hak Tanggungan',
-								className: 'btn btn-sm btn-outline-success me-2',
-								exportOptions: {
-									columns: ':visible',
-									format: {
-										body: (data) => {
-											const temp = document.createElement('div');
-											temp.innerHTML = data;
-											return temp.textContent || temp.innerText || '';
-										}
-									}
-								}
-							}, {
-								extend: 'colvis',
-								text: '<i class="bx bx-columns me-1"></i> Kolom',
-								className: 'btn btn-sm btn-outline-secondary'
-							}],
-							onInitComplete: resolve
-						}));
+					// Opsi 2: Menghilangkan sama sekali
+					// info: "",
 
-					} catch (e) {
-						console.error('Gagal parsing JSON:', e);
-						$('#tabelEksekusiHT').html('<div class="alert alert-danger d-flex align-items-center" role="alert"><i class="bx bx-error-circle fs-4 me-2"></i><div>Gagal memuat data eksekusi. Silakan coba lagi.</div></div>');
-						reject(e);
+					// Opsi 3: Hanya menampilkan total
+					// info: "Total: _TOTAL_ data",
+
+					// Mengganti teks lainnya (opsional)
+					infoEmpty: "Menampilkan 0 sampai 0 dari 0 perkara]",
+					infoFiltered: "(disaring dari _MAX_ total perkara)",
+					lengthMenu: "Tampilkan _MENU_ perkara per halaman",
+					loadingRecords: "Memuat...",
+					processing: "Memproses...",
+					search: "Cari:",
+					zeroRecords: "Tidak ditemukan perkara yang sesuai",
+					paginate: {
+						first: "Pertama",
+						last: "Terakhir",
+						next: "Selanjutnya",
+						previous: "Sebelumnya"
 					}
-				})
-				.fail(reject);
+				},
+				ajax: {
+					url: 'show_eksekusi_ht',
+					type: 'POST',
+					data: function (d) {
+						d.kode = kode;
+						d.tgl_awal = tgl_awal;
+						d.tgl_akhir = tgl_akhir;
+					},
+					dataSrc: function (json) {
+						// Update badge saat data berhasil diambil
+						updateTotalBadge(json.recordsFiltered || json.recordsTotal || 0);
+						return json.data;
+					},
+					error: function (xhr) {
+						reject(xhr);
+					}
+				},
+
+				order: [[3, 'desc']],
+
+				columns: [
+					{ data: 0, className: 'text-center align-middle', orderable: false, searchable: false },
+					{ data: 1 },
+					{ data: 2 },
+					{
+						data: 3,
+						className: 'text-center align-middle',
+						render: function (data, type) {
+
+							// untuk sorting & search tetap pakai raw data
+							if (type === 'sort' || type === 'type') {
+								return data;
+							}
+
+							return badgeTahapan(data);
+						}
+					},
+					{
+						data: 4,
+						className: 'text-center align-middle',
+						render: function (data, type) {
+
+							// untuk sorting & search tetap pakai raw data
+							if (type === 'sort' || type === 'type') {
+								return data;
+							}
+
+							return badgeTahapan(data);
+						}
+					},
+					{
+						data: 5,
+						className: 'text-center align-middle',
+						render: function (data, type) {
+
+							// untuk sorting & search tetap pakai raw data
+							if (type === 'sort' || type === 'type') {
+								return data;
+							}
+
+							return badgeTahapan(data);
+						}
+					},
+					{
+						data: 6,
+						className: 'text-center align-middle',
+						render: function (data, type) {
+
+							// untuk sorting & search tetap pakai raw data
+							if (type === 'sort' || type === 'type') {
+								return data;
+							}
+
+							return badgeTahapan(data);
+						}
+					},
+					{
+						data: 7,
+						className: 'text-center align-middle',
+						render: function (data, type) {
+
+							// untuk sorting & search tetap pakai raw data
+							if (type === 'sort' || type === 'type') {
+								return data;
+							}
+
+							return badgeTahapan(data);
+						}
+					},
+				],
+
+				dom: 'Bfrtip',
+
+				buttons: [
+					{
+						extend: 'excelHtml5',
+						text: '<i class="bx bx-spreadsheet me-1"></i> Export Excel',
+						title: 'Data Perkara Eksekusi Hak Tanggungan',
+						className: 'btn btn-sm btn-outline-success me-2'
+					},
+					{
+						extend: 'colvis',
+						text: '<i class="bx bx-columns me-1"></i> Kolom',
+						className: 'btn btn-sm btn-outline-secondary'
+					}
+				],
+
+				// Gunakan drawCallback untuk update setiap kali tabel di-render
+				drawCallback: function (settings) {
+					const json = settings.json;
+					if (json) {
+						updateTotalBadge(json.recordsFiltered || 0);
+					}
+					resolve();
+				}
+			});
+
+			// Fungsi helper untuk update badge
+			function updateTotalBadge(total) {
+				$('#totalPerkaraBadgeEksekusiHT').text(total.toLocaleString('id-ID'));
+			}
+
+			// Fallback: Update badge setelah ajax complete
+			$('#totalPerkaraBadgeEksekusiHT').on('xhr.dt', function (e, settings, json) {
+				if (json) {
+					updateTotalBadge(json.recordsFiltered || 0);
+				}
+			});
 		});
 	}
 
@@ -698,7 +1020,7 @@
 
 			$('#tabelPerkaraJinayat').html(`
 				<div class="table-responsive">
-					<table id="tabelPerkaraJinayatData" class="table table-striped table-bordered table-hover align-middle" width="100%">
+					<table id="tabelPerkaraJinayatData" class="table table-striped table-bordered table-hover align-middle">
 						<thead class="table-dark">
 							<tr>
 								<th class="text-center" style="width:4%">No</th>
@@ -707,14 +1029,11 @@
 								<th>Jenis Jarimah</th>
 								<th class="text-center">Tgl. Masuk Perkara</th>
 								<th class="text-center">Tgl. Putus Perkara</th>
-								<th>Jenis Hukuman</th>
-								<th>Terdakwa</th>
-								<th class="text-center">Usia</th>
 							</tr>
 						</thead>
 						<tfoot class="table-light">
 							<tr>
-								<th colspan="9" class="text-end pe-3">
+								<th colspan="6" class="text-end pe-3">
 									Total Perkara :
 									<span id="totalPerkaraBadge" class="badge bg-dark fs-6">0</span>
 								</th>
@@ -730,8 +1049,32 @@
 				destroy: true,
 				responsive: false,
 				scrollX: true,
-				autoWidth: false,
+				autoWidth: true,
+				language: {
+					// Opsi 1: Mengganti dengan format custom
+					info: "Menampilkan _START_ sampai _END_ dari _TOTAL_ perkara",
 
+					// Opsi 2: Menghilangkan sama sekali
+					// info: "",
+
+					// Opsi 3: Hanya menampilkan total
+					// info: "Total: _TOTAL_ data",
+
+					// Mengganti teks lainnya (opsional)
+					infoEmpty: "Menampilkan 0 sampai 0 dari 0 perkara]",
+					infoFiltered: "(disaring dari _MAX_ total perkara)",
+					lengthMenu: "Tampilkan _MENU_ perkara per halaman",
+					loadingRecords: "Memuat...",
+					processing: "Memproses...",
+					search: "Cari:",
+					zeroRecords: "Tidak ditemukan perkara yang sesuai",
+					paginate: {
+						first: "Pertama",
+						last: "Terakhir",
+						next: "Selanjutnya",
+						previous: "Sebelumnya"
+					}
+				},
 				ajax: {
 					url: 'show_jinayat',
 					type: 'POST',
@@ -758,10 +1101,7 @@
 					{ data: 2 },
 					{ data: 3 },
 					{ data: 4, className: 'text-center align-middle' },
-					{ data: 5, className: 'text-center align-middle' },
-					{ data: 6 },
-					{ data: 7 },
-					{ data: 8, className: 'text-center' }
+					{ data: 5, className: 'text-center align-middle' }
 				],
 
 				dom: 'Bfrtip',
@@ -1008,6 +1348,8 @@
 						pieChart.destroy();
 					}
 
+					const totalBeban = (res.masuk || 0) + (res.sisa || 0);
+
 					const options = {
 						series: [res.masuk, res.sisa],
 						chart: {
@@ -1021,6 +1363,47 @@
 						dataLabels: {
 							formatter: function (val, opts) {
 								return opts.w.config.series[opts.seriesIndex] + " perkara";
+							}
+						},
+						plotOptions: {
+							pie: {
+								donut: {
+									size: '70%',
+									labels: {
+										show: true,
+
+										name: {
+											show: true,
+											fontSize: '14px',
+											offsetY: -10
+										},
+
+										value: {
+											show: true,
+											fontSize: '22px',
+											fontWeight: 600,
+											formatter: function () {
+												return totalBeban + " perkara";
+											}
+										},
+
+										total: {
+											show: true,
+											label: 'Beban Perkara',
+											fontSize: '14px',
+											fontWeight: 500,
+											formatter: function () {
+												return totalBeban + " perkara";
+											}
+										}
+									}
+								}
+							}
+						},
+						dataLabels: {
+							enabled: true,
+							formatter: function (val) {
+								return val.toFixed(1) + "%";
 							}
 						},
 						tooltip: {
@@ -1137,6 +1520,724 @@
 		});
 	}
 
+	function loadPiePerdataTepat(kode_satker, tahun) {
+		return new Promise((resolve, reject) => {
+			$.ajax({
+				url: 'get_pie_perdata_tepat',
+				type: "POST",
+				data: { kode_satker: kode_satker, tahun: tahun },
+				dataType: "json",
+				beforeSend: function () {
+					$("#piePerdataTepat").html("<div class='text-center p-5'>Loading chart...</div>");
+				}
+			})
+				.done(async function (res) {
+					console.log(res[0]);
+					let total = Number(res[0].jumlah_perdata) || 0;
+					let tepatWaktu = Number(res[0].jumlah_tepat_waktu_perdata) || 0;
+
+					let persen = total > 0
+						? parseFloat(((tepatWaktu / total) * 100).toFixed(2))
+						: 0;
+
+					let tidakTepat = total - tepatWaktu; // <- ini yang benar untuk pie
+
+					// Kalau chart belum ada → buat baru
+					if (!chartPerdataTepatWaktu) {
+
+						const options = {
+							series: [tepatWaktu, tidakTepat],
+							chart: {
+								foreColor: '#9ba7b2',
+								height: 330,
+								type: 'donut'
+							},
+							colors: ["#0d6efd", "#f41127"],
+							labels: ['Tepat Waktu', 'Tidak Tepat Waktu'],
+							legend: { position: 'bottom' },
+							plotOptions: {
+								pie: {
+									donut: {
+										size: '70%',
+										labels: {
+											show: true,
+											total: {
+												show: true,
+												label: 'Persentase Tepat Waktu',
+												formatter: function () {
+													return persen + " %";
+												}
+											}
+										}
+									}
+								}
+							},
+							tooltip: {
+								y: {
+									formatter: function (val) {
+										return val + " perkara";
+									}
+								}
+							}
+						};
+
+						chartPerdataTepatWaktu = new ApexCharts(
+							document.querySelector("#piePerdataTepat"),
+							options
+						);
+
+						chartPerdataTepatWaktu.render();
+
+					} else {
+						// Kalau chart sudah ada → update saja
+						chartPerdataTepatWaktu.updateSeries([tepatWaktu, tidakTepat]);
+
+						chartPerdataTepatWaktu.updateOptions({
+							plotOptions: {
+								pie: {
+									donut: {
+										labels: {
+											total: {
+												formatter: function () {
+													return persen + " %";
+												}
+											}
+										}
+									}
+								}
+							}
+						});
+					}
+					resolve();
+				})
+				.fail(reject);
+		});
+	}
+
+	function loadTabelPerdataTepat(kode_satker, tahun) {
+		$('#tabelPerdataTepat').html('<div class="text-center py-5"><div class="spinner-border text-primary" role="status"></div></div>');
+
+		$.ajax({
+			url: 'halamansakip/get_tabel_perdata_tepat',
+			type: 'POST',
+			data: { kode_satker: kode_satker, tahun: tahun },
+			dataType: 'json',
+			cache: false
+		})
+			.done(function (response) {
+				const res = response.data
+				if (res && res.length > 0) {
+					const rows = res.map((row, i) => `
+					<tr class="satker-row" style="cursor: pointer">
+						<td class="text-center">${i + 1}</td>
+						<td><span class="fw-semibold">${row.bulan}</span></td>
+						<td class="text-center"><span class="badge bg-success">${row.diputus_sd_3_bulan}</span></td>
+						<td class="text-center"><span class="badge bg-success">${row.diputus_3_sd_5_bulan}</span></td>
+						<td class="text-center"><span class="badge bg-warning">${row.diputus_lebih_5_bulan}</span></td>
+						<td class="text-center"><span class="badge bg-success">${row.jumlah_tepat_waktu}</span></td>
+						<td class="text-center"><span class="badge bg-primary">${row.jumlah_perkara_putus}</span></td>
+					</tr>
+				`).join('');
+
+					const tableHtml = `
+					<div class="table-responsive">
+						<table id="tabelPerdataTepatData" class="table table-striped table-bordered table-hover align-middle" style="width:100%">
+							<thead class="table-dark">
+								<tr>
+									<th class="text-center" style="width:45px">No</th>
+									<th style="width:80px">Bulan</th>
+									<th class="text-center">Diputus s.d. 3 Bulan</th>
+									<th class="text-center">Diputus 3 s.d. 5 Bulan</th>
+									<th class="text-center">Diputus lebih dari 5 Bulan</th>
+									<th class="text-center">Total Putus Tepat Waktu</th>
+									<th class="text-center">Total Perkara Putus</th>
+								</tr>
+							</thead>
+							<tbody>${rows}</tbody>
+							<tfoot class="table-light">
+								<tr>
+									<th colspan="2" class="text-end pe-3">Total:</th>
+									<th class="text-center">${res.reduce((sum, r) => sum + Number(r.diputus_sd_3_bulan), 0)}</th>
+									<th class="text-center">${res.reduce((sum, r) => sum + Number(r.diputus_3_sd_5_bulan), 0)}</th>
+									<th class="text-center">${res.reduce((sum, r) => sum + Number(r.diputus_lebih_5_bulan), 0)}</th>
+									<th class="text-center">${res.reduce((sum, r) => sum + Number(r.jumlah_tepat_waktu), 0)}</th>
+									<th class="text-center">${res.reduce((sum, r) => sum + Number(r.jumlah_perkara_putus), 0)}</th>
+								</tr>
+							</tfoot>
+						</table>
+					</div>
+				`;
+
+					$('#tabelPerdataTepat').html(tableHtml);
+
+					// Initialize DataTable
+					$('#tabelPerdataTepatData').DataTable(getDataTableConfigSAKIP({
+						columnDefs: [
+							{ targets: 0, orderable: false, searchable: false, className: 'text-center' },
+							{ targets: [2, 3, 4, 5], className: 'text-center' }
+						]
+					}));
+
+				} else {
+					$('#tabelPerdataTepat').html('<div class="alert alert-info">Data tidak ditemukan.</div>');
+				}
+			})
+			.fail(function (xhr, status, error) {
+				$('#tabelPerdataTepat').html('<div class="alert alert-danger">Terjadi kesalahan: ' + error + '</div>');
+			});
+	}
+
+	function loadPiePerkaraEcourt(kode_satker, tahun) {
+		return new Promise((resolve, reject) => {
+			$.ajax({
+				url: 'get_pie_perkara_ecourt',
+				type: "POST",
+				data: { kode_satker: kode_satker, tahun: tahun },
+				dataType: "json",
+				beforeSend: function () {
+					$("#piePerkaraEcourt").html("<div class='text-center p-5'>Loading chart...</div>");
+				}
+			})
+				.done(async function (res) {
+					console.log(res[0]);
+					let total = Number(res[0].jumlah_perkara) || 0;
+					let ecourt = Number(res[0].jumlah_perkara_ecourt) || 0;
+
+					let persen = total > 0
+						? parseFloat(((ecourt / total) * 100).toFixed(2))
+						: 0;
+
+					let tidakEcourt = total - ecourt; // <- ini yang benar untuk pie
+
+					// Kalau chart belum ada → buat baru
+					if (!chartPerkaraEcourt) {
+
+						const options = {
+							series: [ecourt, tidakEcourt],
+							chart: {
+								foreColor: '#9ba7b2',
+								height: 330,
+								type: 'donut'
+							},
+							colors: ["#0d6efd", "#f41127"],
+							labels: ['Perkara Ecourt', 'Perkara Non Ecourt'],
+							legend: { position: 'bottom' },
+							plotOptions: {
+								pie: {
+									donut: {
+										size: '70%',
+										labels: {
+											show: true,
+											total: {
+												show: true,
+												label: 'Persentase Perkara Ecourt',
+												formatter: function () {
+													return persen + " %";
+												}
+											}
+										}
+									}
+								}
+							},
+							tooltip: {
+								y: {
+									formatter: function (val) {
+										return val + " perkara";
+									}
+								}
+							}
+						};
+
+						chartPerkaraEcourt = new ApexCharts(
+							document.querySelector("#piePerkaraEcourt"),
+							options
+						);
+
+						chartPerkaraEcourt.render();
+
+					} else {
+						// Kalau chart sudah ada → update saja
+						chartPerkaraEcourt.updateSeries([ecourt, tidakEcourt]);
+
+						chartPerkaraEcourt.updateOptions({
+							plotOptions: {
+								pie: {
+									donut: {
+										labels: {
+											total: {
+												formatter: function () {
+													return persen + " %";
+												}
+											}
+										}
+									}
+								}
+							}
+						});
+					}
+					resolve();
+				})
+				.fail(reject);
+		});
+	}
+
+	function loadTabelPerkaraEcourt(kode_satker, tahun) {
+		$('#tabelPerkaraEcourt').html('<div class="text-center py-5"><div class="spinner-border text-primary" role="status"></div></div>');
+
+		$.ajax({
+			url: 'halamansakip/get_tabel_perkara_ecourt',
+			type: 'POST',
+			data: { kode_satker: kode_satker, tahun: tahun },
+			dataType: 'json',
+			cache: false
+		})
+			.done(function (response) {
+				const res = response.data
+				if (res && res.length > 0) {
+					const rows = res.map((row, i) => `
+					<tr class="satker-row" style="cursor: pointer">
+						<td class="text-center">${i + 1}</td>
+						<td><span class="fw-semibold">${row.bulan}</span></td>
+						<td class="text-center"><span class="badge bg-success">${row.jumlah_perkara_ecourt}</span></td>
+						<td class="text-center"><span class="badge bg-warning">${row.jumlah_perkara_non_ecourt}</span></td>
+						<td class="text-center"><span class="badge bg-primary">${row.jumlah_perkara_masuk}</span></td>
+					</tr>
+				`).join('');
+
+					const tableHtml = `
+					<div class="table-responsive">
+						<table id="tabelPerkaraEcourtData" class="table table-striped table-bordered table-hover align-middle" style="width:100%">
+							<thead class="table-dark">
+								<tr>
+									<th class="text-center" style="width:45px">No</th>
+									<th style="width:80px">Bulan</th>
+									<th class="text-center">Perkara E-Court</th>
+									<th class="text-center">Perkara Non E-Court</th>
+									<th class="text-center">Jumlah Perkara Diterima</th>
+								</tr>
+							</thead>
+							<tbody>${rows}</tbody>
+							<tfoot class="table-light">
+								<tr>
+									<th colspan="2" class="text-end pe-3">Total:</th>
+									<th class="text-center">${res.reduce((sum, r) => sum + Number(r.jumlah_perkara_ecourt), 0)}</th>
+									<th class="text-center">${res.reduce((sum, r) => sum + Number(r.jumlah_perkara_non_ecourt), 0)}</th>
+									<th class="text-center">${res.reduce((sum, r) => sum + Number(r.jumlah_perkara_masuk), 0)}</th>
+								</tr>
+							</tfoot>
+						</table>
+					</div>
+				`;
+
+					$('#tabelPerkaraEcourt').html(tableHtml);
+
+					// Initialize DataTable
+					$('#tabelPerkaraEcourtData').DataTable(getDataTableConfigSAKIP({
+						columnDefs: [
+							{ targets: 0, orderable: false, searchable: false, className: 'text-center' },
+							{ targets: [2, 3, 4], className: 'text-center' }
+						]
+					}));
+
+				} else {
+					$('#tabelPerkaraEcourt').html('<div class="alert alert-info">Data tidak ditemukan.</div>');
+				}
+			})
+			.fail(function (xhr, status, error) {
+				$('#tabelPerkaraEcourt').html('<div class="alert alert-danger">Terjadi kesalahan: ' + error + '</div>');
+			});
+	}
+
+	function loadPiePerkaraEBerpadu(kode_satker, tahun) {
+		return new Promise((resolve, reject) => {
+			$.ajax({
+				url: 'halamansakip/get_chart_perkara_eberpadu',
+				type: "POST",
+				data: { kode_satker: kode_satker, tahun: tahun },
+				dataType: "json",
+				beforeSend: function () {
+					$("#piePerkaraEBerpadu").html("<div class='text-center p-5'>Loading chart...</div>");
+				}
+			})
+				.done(async function (res) {
+					console.log(res[0]);
+					let total = Number(res[0].jumlah_perkara) || 0;
+					let eberpadu = Number(res[0].jumlah_perkara_eberpadu) || 0;
+
+					let persen = total > 0
+						? parseFloat(((eberpadu / total) * 100).toFixed(2))
+						: 0;
+
+					let tidakEberpadu = total - eberpadu; // <- ini yang benar untuk pie
+
+					// Kalau chart belum ada → buat baru
+					if (!chartPerkaraEBerpadu) {
+
+						const options = {
+							series: [eberpadu, tidakEberpadu],
+							chart: {
+								foreColor: '#9ba7b2',
+								height: 330,
+								type: 'donut'
+							},
+							colors: ["#0d6efd", "#f41127"],
+							labels: ['Perkara EBerpadu', 'Perkara Non EBerpadu'],
+							legend: { position: 'bottom' },
+							plotOptions: {
+								pie: {
+									donut: {
+										size: '70%',
+										labels: {
+											show: true,
+											total: {
+												show: true,
+												label: 'Persentase Perkara EBerpadu',
+												formatter: function () {
+													return persen + " %";
+												}
+											}
+										}
+									}
+								}
+							},
+							tooltip: {
+								y: {
+									formatter: function (val) {
+										return val + " perkara";
+									}
+								}
+							}
+						};
+
+						chartPerkaraEBerpadu = new ApexCharts(
+							document.querySelector("#piePerkaraEBerpadu"),
+							options
+						);
+
+						chartPerkaraEBerpadu.render();
+
+					} else {
+						// Kalau chart sudah ada → update saja
+						chartPerkaraEBerpadu.updateSeries([eberpadu, tidakEberpadu]);
+
+						chartPerkaraEBerpadu.updateOptions({
+							plotOptions: {
+								pie: {
+									donut: {
+										labels: {
+											total: {
+												formatter: function () {
+													return persen + " %";
+												}
+											}
+										}
+									}
+								}
+							}
+						});
+					}
+					resolve();
+				})
+				.fail(reject);
+		});
+	}
+
+	function loadTabelPerkaraEBerpadu(kode_satker, tahun) {
+		$('#tabelPerkaraEBerpadu').html('<div class="text-center py-5"><div class="spinner-border text-primary" role="status"></div></div>');
+
+		$.ajax({
+			url: 'halamansakip/get_tabel_perkara_eberpadu',
+			type: 'POST',
+			data: { kode_satker: kode_satker, tahun: tahun },
+			dataType: 'json',
+			cache: false
+		})
+			.done(function (response) {
+				const res = response.data
+				if (res && res.length > 0) {
+					const rows = res.map((row, i) => `
+					<tr class="satker-row" style="cursor: pointer">
+						<td class="text-center">${i + 1}</td>
+						<td><span class="fw-semibold">${row.bulan}</span></td>
+						<td class="text-center"><span class="badge bg-success">${row.jumlah_perkara_eberpadu}</span></td>
+						<td class="text-center"><span class="badge bg-warning">${row.jumlah_perkara_non_eberpadu}</span></td>
+						<td class="text-center"><span class="badge bg-primary">${row.jumlah_perkara_masuk}</span></td>
+					</tr>
+				`).join('');
+
+					const tableHtml = `
+					<div class="table-responsive">
+						<table id="tabelPerkaraEBerpaduData" class="table table-striped table-bordered table-hover align-middle" style="width:100%">
+							<thead class="table-dark">
+								<tr>
+									<th class="text-center" style="width:45px">No</th>
+									<th style="width:80px">Bulan</th>
+									<th class="text-center">Perkara E-Berpadu</th>
+									<th class="text-center">Perkara Non E-Berpadu</th>
+									<th class="text-center">Jumlah Perkara Diterima</th>
+								</tr>
+							</thead>
+							<tbody>${rows}</tbody>
+							<tfoot class="table-light">
+								<tr>
+									<th colspan="2" class="text-end pe-3">Total:</th>
+									<th class="text-center">${res.reduce((sum, r) => sum + Number(r.jumlah_perkara_eberpadu), 0)}</th>
+									<th class="text-center">${res.reduce((sum, r) => sum + Number(r.jumlah_perkara_non_eberpadu), 0)}</th>
+									<th class="text-center">${res.reduce((sum, r) => sum + Number(r.jumlah_perkara_masuk), 0)}</th>
+								</tr>
+							</tfoot>
+						</table>
+					</div>
+				`;
+
+					$('#tabelPerkaraEBerpadu').html(tableHtml);
+
+					// Initialize DataTable
+					$('#tabelPerkaraEBerpaduData').DataTable(getDataTableConfigSAKIP({
+						columnDefs: [
+							{ targets: 0, orderable: false, searchable: false, className: 'text-center' },
+							{ targets: [2, 3, 4], className: 'text-center' }
+						]
+					}));
+
+				} else {
+					$('#tabelPerkaraEBerpadu').html('<div class="alert alert-info">Data tidak ditemukan.</div>');
+				}
+			})
+			.fail(function (xhr, status, error) {
+				$('#tabelPerkaraEBerpadu').html('<div class="alert alert-danger">Terjadi kesalahan: ' + error + '</div>');
+			});
+	}
+
+	function loadPieJinayatTepat(kode_satker, tahun = null) {
+		return new Promise((resolve, reject) => {
+			$.ajax({
+				url: 'get_pie_jinayat_tepat',
+				type: "POST",
+				data: { kode_satker: kode_satker, tahun: tahun },
+				dataType: "json",
+				beforeSend: function () {
+					$("#pieJinayatTepat").html("<div class='text-center p-5'>Loading chart...</div>");
+				}
+			})
+				.done(async function (res) {
+					let total = Number(res[0].jumlah_jinayat) || 0;
+					let tepatWaktu = Number(res[0].jumlah_tepat_waktu_jinayat) || 0;
+
+					let persen = total > 0
+						? parseFloat(((tepatWaktu / total) * 100).toFixed(2))
+						: 0;
+
+					let tidakTepat = total - tepatWaktu; // <- ini yang benar untuk pie
+
+					// Kalau chart belum ada → buat baru
+					if (!chartJinayatTepatWaktu) {
+
+						const options = {
+							series: [tepatWaktu, tidakTepat],
+							chart: {
+								foreColor: '#9ba7b2',
+								height: 330,
+								type: 'donut'
+							},
+							colors: ["#0d6efd", "#f41127"],
+							labels: ['Tepat Waktu', 'Tidak Tepat Waktu'],
+							legend: { position: 'bottom' },
+							plotOptions: {
+								pie: {
+									donut: {
+										size: '70%',
+										labels: {
+											show: true,
+											total: {
+												show: true,
+												label: 'Persentase Tepat Waktu',
+												formatter: function () {
+													return persen + " %";
+												}
+											}
+										}
+									}
+								}
+							},
+							tooltip: {
+								y: {
+									formatter: function (val) {
+										return val + " perkara";
+									}
+								}
+							}
+						};
+
+						chartJinayatTepatWaktu = new ApexCharts(
+							document.querySelector("#pieJinayatTepat"),
+							options
+						);
+
+						chartJinayatTepatWaktu.render();
+
+					} else {
+						// Kalau chart sudah ada → update saja
+						chartJinayatTepatWaktu.updateSeries([tepatWaktu, tidakTepat]);
+
+						chartJinayatTepatWaktu.updateOptions({
+							plotOptions: {
+								pie: {
+									donut: {
+										labels: {
+											total: {
+												formatter: function () {
+													return persen + " %";
+												}
+											}
+										}
+									}
+								}
+							}
+						});
+					}
+					resolve();
+				})
+				.fail(reject);
+		});
+	}
+
+	function loadTabelJinayatTepat(kode_satker, tahun) {
+		$('#tabelJinayatTepat').html('<div class="text-center py-5"><div class="spinner-border text-primary" role="status"></div></div>');
+
+		$.ajax({
+			url: 'halamansakip/get_tabel_jinayat_tepat',
+			type: 'POST',
+			data: { kode_satker: kode_satker, tahun: tahun },
+			dataType: 'json',
+			cache: false
+		})
+			.done(function (response) {
+				const res = response.data
+				if (res && res.length > 0) {
+					const rows = res.map((row, i) => `
+					<tr class="satker-row" style="cursor: pointer">
+						<td class="text-center">${i + 1}</td>
+						<td><span class="fw-semibold">${row.bulan}</span></td>
+						<td class="text-center"><span class="badge bg-success">${row.diputus_sd_3_bulan}</span></td>
+						<td class="text-center"><span class="badge bg-success">${row.diputus_3_sd_5_bulan}</span></td>
+						<td class="text-center"><span class="badge bg-warning">${row.diputus_lebih_5_bulan}</span></td>
+						<td class="text-center"><span class="badge bg-success">${row.jumlah_tepat_waktu}</span></td>
+						<td class="text-center"><span class="badge bg-primary">${row.jumlah_perkara_putus}</span></td>
+					</tr>
+				`).join('');
+
+					const tableHtml = `
+					<div class="table-responsive">
+						<table id="tabelJinayatTepatData" class="table table-striped table-bordered table-hover align-middle" style="width:100%">
+							<thead class="table-dark">
+								<tr>
+									<th class="text-center" style="width:45px">No</th>
+									<th style="width:80px">Bulan</th>
+									<th class="text-center">Diputus s.d. 3 Bulan</th>
+									<th class="text-center">Diputus 3 s.d. 5 Bulan</th>
+									<th class="text-center">Diputus lebih dari 5 Bulan</th>
+									<th class="text-center">Total Putus Tepat Waktu</th>
+									<th class="text-center">Total Perkara Putus</th>
+								</tr>
+							</thead>
+							<tbody>${rows}</tbody>
+							<tfoot class="table-light">
+								<tr>
+									<th colspan="2" class="text-end pe-3">Total:</th>
+									<th class="text-center">${res.reduce((sum, r) => sum + Number(r.diputus_sd_3_bulan), 0)}</th>
+									<th class="text-center">${res.reduce((sum, r) => sum + Number(r.diputus_3_sd_5_bulan), 0)}</th>
+									<th class="text-center">${res.reduce((sum, r) => sum + Number(r.diputus_lebih_5_bulan), 0)}</th>
+									<th class="text-center">${res.reduce((sum, r) => sum + Number(r.jumlah_tepat_waktu), 0)}</th>
+									<th class="text-center">${res.reduce((sum, r) => sum + Number(r.jumlah_perkara_putus), 0)}</th>
+								</tr>
+							</tfoot>
+						</table>
+					</div>
+				`;
+
+					$('#tabelJinayatTepat').html(tableHtml);
+
+					// Initialize DataTable
+					$('#tabelJinayatTepatData').DataTable(getDataTableConfigSAKIP({
+						columnDefs: [
+							{ targets: 0, orderable: false, searchable: false, className: 'text-center' },
+							{ targets: [2, 3, 4, 5], className: 'text-center' }
+						]
+					}));
+
+				} else {
+					$('#tabelJinayatTepat').html('<div class="alert alert-info">Data tidak ditemukan.</div>');
+				}
+			})
+			.fail(function (xhr, status, error) {
+				$('#tabelJinayatTepat').html('<div class="alert alert-danger">Terjadi kesalahan: ' + error + '</div>');
+			});
+	}
+	
+	function loadTabelProdeo(kode_satker, tahun) {
+		$('#tabelProdeo').html('<div class="text-center py-5"><div class="spinner-border text-primary" role="status"></div></div>');
+
+		$.ajax({
+			url: 'halamansakip/get_tabel_prodeo',
+			type: 'POST',
+			data: { kode_satker: kode_satker, tahun: tahun },
+			dataType: 'json',
+			cache: false
+		})
+			.done(function (response) {
+				const res = response.data
+				if (res && res.length > 0) {
+					const rows = res.map((row, i) => `
+					<tr class="satker-row" style="cursor: pointer">
+						<td class="text-center">${i + 1}</td>
+						<td><span class="fw-semibold">${row.bulan}</span></td>
+						<td class="text-center"><span class="badge bg-success">${row.prodeo_diterima}</span></td>
+						<td class="text-center"><span class="badge bg-success">${row.prodeo_diputus}</span></td>
+					</tr>
+				`).join('');
+
+					const tableHtml = `
+					<div class="table-responsive">
+						<table id="tabelProdeoData" class="table table-striped table-bordered table-hover align-middle" style="width:100%">
+							<thead class="table-dark">
+								<tr>
+									<th class="text-center" style="width:45px">No</th>
+									<th style="width:80px">Bulan</th>
+									<th class="text-center">Jumlah Perkara Prodeo Diterima</th>
+									<th class="text-center">Jumlah Perkara Prodeo Diselesaikan</th>
+								</tr>
+							</thead>
+							<tbody>${rows}</tbody>
+							<tfoot class="table-light">
+								<tr>
+									<th colspan="2" class="text-end pe-3">Total:</th>
+									<th class="text-center">${res.reduce((sum, r) => sum + Number(r.prodeo_diterima), 0)}</th>
+									<th class="text-center">${res.reduce((sum, r) => sum + Number(r.prodeo_diputus), 0)}</th>
+								</tr>
+							</tfoot>
+						</table>
+					</div>
+				`;
+
+					$('#tabelProdeo').html(tableHtml);
+
+					// Initialize DataTable
+					$('#tabelProdeoData').DataTable(getDataTableConfigSAKIP({
+						columnDefs: [
+							{ targets: 0, orderable: false, searchable: false, className: 'text-center' },
+							{ targets: [2, 3], className: 'text-center' }
+						]
+					}));
+
+				} else {
+					$('#tabelProdeo').html('<div class="alert alert-info">Data tidak ditemukan.</div>');
+				}
+			})
+			.fail(function (xhr, status, error) {
+				$('#tabelProdeo').html('<div class="alert alert-danger">Terjadi kesalahan: ' + error + '</div>');
+			});
+	}
 	// ============================================
 	// NEW: Functions for new data
 	// ============================================
@@ -1167,9 +2268,9 @@
 			dataType: 'json',
 			cache: false
 		})
-		.done(function(response) {
-			if (response && response.length > 0) {
-				const rows = response.map((row, i) => `
+			.done(function (response) {
+				if (response && response.length > 0) {
+					const rows = response.map((row, i) => `
 					<tr class="satker-row" style="cursor: pointer" data-kode-satker="${row.kode_satker_asal}">
 						<td class="text-center">${i + 1}</td>
 						<td><span class="fw-semibold">${row.kode_satker_asal}</span></td>
@@ -1182,7 +2283,7 @@
 					</tr>
 				`).join('');
 
-				const tableHtml = `
+					const tableHtml = `
 					<div class="mb-2">
 						<button class="btn btn-sm btn-outline-primary" onclick="loadRingkasanPerkaraBanding()">
 							<i class="bx bx-refresh me-1"></i> Refresh Ringkasan
@@ -1206,11 +2307,11 @@
 							<tfoot class="table-light">
 								<tr>
 									<th colspan="3" class="text-end pe-3">Total:</th>
-									<th class="text-center">${response.reduce((sum, r) => sum + r.total_perkara_banding, 0)}</th>
-									<th class="text-center">${response.reduce((sum, r) => sum + r.sudah_diputus, 0)}</th>
-									<th class="text-center">${response.reduce((sum, r) => sum + r.dalam_proses, 0)}</th>
-									<th class="text-center">${response.reduce((sum, r) => sum + r.dicabut, 0)}</th>
-									<th class="text-center">${Math.round(response.reduce((sum, r) => sum + (r.rata_rata_lama_proses * r.total_perkara_banding), 0) / response.reduce((sum, r) => sum + r.total_perkara_banding, 0))} hari</th>
+									<th class="text-center">${response.reduce((sum, r) => sum + Number(r.total_perkara_banding), 0)}</th>
+									<th class="text-center">${response.reduce((sum, r) => sum + Number(r.sudah_diputus), 0)}</th>
+									<th class="text-center">${response.reduce((sum, r) => sum + Number(r.dalam_proses), 0)}</th>
+									<th class="text-center">${response.reduce((sum, r) => sum + Number(r.dicabut), 0)}</th>
+									<th class="text-center">${Math.round(response.reduce((sum, r) => sum + (Number(r.rata_rata_lama_proses) * Number(r.total_perkara_banding)), 0) / response.reduce((sum, r) => sum + r.total_perkara_banding, 0))} hari</th>
 								</tr>
 							</tfoot>
 						</table>
@@ -1218,29 +2319,29 @@
 					<small class="text-muted"><i class="bx bx-info-circle"></i> Klik pada baris untuk melihat detail perkara banding</small>
 				`;
 
-				$('#tabelPerkaraBanding').html(tableHtml);
+					$('#tabelPerkaraBanding').html(tableHtml);
 
-				// Initialize DataTable
-				$('#dtRingkasanBanding').DataTable(getDataTableConfig({
-					order: [[3, 'desc']],
-					columnDefs: [
-						{ targets: 0, orderable: false, searchable: false, className: 'text-center' },
-						{ targets: [3, 4, 5, 6], className: 'text-center' }
-					]
-				}));
+					// Initialize DataTable
+					$('#dtRingkasanBanding').DataTable(getDataTableConfig({
+						order: [[3, 'desc']],
+						columnDefs: [
+							{ targets: 0, orderable: false, searchable: false, className: 'text-center' },
+							{ targets: [3, 4, 5, 6], className: 'text-center' }
+						]
+					}));
 
-				// Bind click event for table rows
-				$('#dtRingkasanBanding').on('click', '.satker-row', function() {
-					const satkerKode = $(this).data('kode-satker');
-					loadDetailPerkaraBandingBySatker(satkerKode);
-				});
-			} else {
-				$('#tabelPerkaraBanding').html('<div class="alert alert-info">Tidak ada data perkara banding.</div>');
-			}
-		})
-		.fail(function(xhr, status, error) {
-			$('#tabelPerkaraBanding').html('<div class="alert alert-danger">Terjadi kesalahan: ' + error + '</div>');
-		});
+					// Bind click event for table rows
+					$('#dtRingkasanBanding').on('click', '.satker-row', function () {
+						const satkerKode = $(this).data('kode-satker');
+						loadDetailPerkaraBandingBySatker(satkerKode);
+					});
+				} else {
+					$('#tabelPerkaraBanding').html('<div class="alert alert-info">Tidak ada data perkara banding.</div>');
+				}
+			})
+			.fail(function (xhr, status, error) {
+				$('#tabelPerkaraBanding').html('<div class="alert alert-danger">Terjadi kesalahan: ' + error + '</div>');
+			});
 	}
 
 	/**
@@ -1252,23 +2353,23 @@
 		$.post('halamanutama/get_detail_perkara_banding_by_satker', {
 			kode_satker_asal: kode_satker_asal
 		})
-		.done(function(response) {
-			try {
-				const data = typeof response === 'string' ? JSON.parse(response) : response;
-				const { data_perkara_banding } = data;
+			.done(function (response) {
+				try {
+					const data = typeof response === 'string' ? JSON.parse(response) : response;
+					const { data_perkara_banding } = data;
 
-				if (!data_perkara_banding?.length) {
-					$('#tabelPerkaraBanding').html('<div class="alert alert-info">Belum ada data detail perkara banding.</div>');
-					return;
-				}
+					if (!data_perkara_banding?.length) {
+						$('#tabelPerkaraBanding').html('<div class="alert alert-info">Belum ada data detail perkara banding.</div>');
+						return;
+					}
 
-				const rows = data_perkara_banding.map((row, i) => {
-					const tglDaftar = formatTanggal(row.tanggal_pendaftaran_banding);
-					const tahunDaftar = row.tahun_pendaftaran ? `<span class="badge bg-info bg-opacity-25 text-dark">${row.tahun_pendaftaran}</span>` : '-';
-					const tglPutusan = formatTanggal(row.tanggal_putusan_banding);
-					const tahunPutusan = row.tahun_putusan ? `<span class="badge bg-secondary">${row.tahun_putusan}</span>` : '-';
+					const rows = data_perkara_banding.map((row, i) => {
+						const tglDaftar = formatTanggal(row.tanggal_pendaftaran_banding);
+						const tahunDaftar = row.tahun_pendaftaran ? `<span class="badge bg-info bg-opacity-25 text-dark">${row.tahun_pendaftaran}</span>` : '-';
+						const tglPutusan = formatTanggal(row.tanggal_putusan_banding);
+						const tahunPutusan = row.tahun_putusan ? `<span class="badge bg-secondary">${row.tahun_putusan}</span>` : '-';
 
-					return `
+						return `
 						<tr>
 							<td class="text-center">${i + 1}</td>
 							<td>${row.nama_satker_asal ?? '-'}</td>
@@ -1282,9 +2383,9 @@
 							<td class="text-center">${row.lama_proses_hari ?? '-'}</td>
 						</tr>
 					`;
-				}).join('');
+					}).join('');
 
-				const tableHtml = `
+					const tableHtml = `
 					<div class="mb-2">
 						<button id="btnKembaliRingkasan" class="btn btn-sm btn-outline-primary" data-kode-satker="${kode_satker_asal}">
 							<i class="bx bx-arrow-back me-1"></i> Kembali ke Ringkasan
@@ -1321,29 +2422,29 @@
 					</div>
 				`;
 
-				$('#tabelPerkaraBanding').html(tableHtml);
+					$('#tabelPerkaraBanding').html(tableHtml);
 
-				// Bind click event for back button
-				$('#btnKembaliRingkasan').on('click', function() {
-					loadRingkasanPerkaraBanding();
-				});
+					// Bind click event for back button
+					$('#btnKembaliRingkasan').on('click', function () {
+						loadRingkasanPerkaraBanding();
+					});
 
-				// Initialize DataTable
-				$('#dtPerkaraBanding').DataTable(getDataTableConfig({
-					order: [[6, 'desc']],
-					columnDefs: [
-						{ targets: 0, orderable: false, searchable: false, className: 'text-center' },
-						{ targets: [8, 9], className: 'text-center' }
-					]
-				}));
-			} catch (e) {
-				console.error('Gagal parsing JSON:', e);
-				$('#tabelPerkaraBanding').html('<div class="alert alert-danger">Gagal memuat data detail perkara banding.</div>');
-			}
-		})
-		.fail(function(xhr, status, error) {
-			$('#tabelPerkaraBanding').html('<div class="alert alert-danger">Terjadi kesalahan: ' + error + '</div>');
-		});
+					// Initialize DataTable
+					$('#dtPerkaraBanding').DataTable(getDataTableConfig({
+						order: [[6, 'desc']],
+						columnDefs: [
+							{ targets: 0, orderable: false, searchable: false, className: 'text-center' },
+							{ targets: [8, 9], className: 'text-center' }
+						]
+					}));
+				} catch (e) {
+					console.error('Gagal parsing JSON:', e);
+					$('#tabelPerkaraBanding').html('<div class="alert alert-danger">Gagal memuat data detail perkara banding.</div>');
+				}
+			})
+			.fail(function (xhr, status, error) {
+				$('#tabelPerkaraBanding').html('<div class="alert alert-danger">Terjadi kesalahan: ' + error + '</div>');
+			});
 	}
 
 	/**
@@ -1362,15 +2463,15 @@
 			},
 			dataType: 'json'
 		})
-		.done(function(response) {
-			if (response.data_perkara_banding && response.data_perkara_banding.length > 0) {
-				const rows = response.data_perkara_banding.map((row, i) => {
-					const tglDaftar = formatTanggal(row.tanggal_pendaftaran_banding);
-					const tglPutusan = formatTanggal(row.tanggal_putusan_banding);
-					const tahunDaftar = row.tahun_pendaftaran ? `<span class="badge bg-info bg-opacity-25 text-dark">${row.tahun_pendaftaran}</span>` : '-';
-					const tahunPutusan = row.tahun_putusan ? `<span class="badge bg-secondary">${row.tahun_putusan}</span>` : '-';
+			.done(function (response) {
+				if (response.data_perkara_banding && response.data_perkara_banding.length > 0) {
+					const rows = response.data_perkara_banding.map((row, i) => {
+						const tglDaftar = formatTanggal(row.tanggal_pendaftaran_banding);
+						const tglPutusan = formatTanggal(row.tanggal_putusan_banding);
+						const tahunDaftar = row.tahun_pendaftaran ? `<span class="badge bg-info bg-opacity-25 text-dark">${row.tahun_pendaftaran}</span>` : '-';
+						const tahunPutusan = row.tahun_putusan ? `<span class="badge bg-secondary">${row.tahun_putusan}</span>` : '-';
 
-					return `
+						return `
 					<tr>
 						<td class="text-center">${i + 1}</td>
 						<td>${row.nama_satker_asal ?? '-'}</td>
@@ -1384,9 +2485,9 @@
 						<td class="text-center">${row.lama_proses_hari ?? '-'}</td>
 					</tr>
 				`;
-				}).join('');
+					}).join('');
 
-				const tableHtml = `
+					const tableHtml = `
 					<div class="mb-2">
 						<small class="text-muted"><i class="bx bx-info-circle"></i> Data perkara banding dari tahun 2016 - 2025</small>
 					</div>
@@ -1418,22 +2519,22 @@
 					</div>
 				`;
 
-				$('#tabelPerkaraBanding').html(tableHtml);
+					$('#tabelPerkaraBanding').html(tableHtml);
 
-				$('#dtPerkaraBanding').DataTable(getDataTableConfig({
-					order: [[6, 'desc']],
-					columnDefs: [
-						{ targets: 0, orderable: false, searchable: false, className: 'text-center' },
-						{ targets: [8, 9], className: 'text-center' }
-					]
-				}));
-			} else {
-				$('#tabelPerkaraBanding').html('<div class="alert alert-info">Tidak ada data perkara banding.</div>');
-			}
-		})
-		.fail(function(xhr, status, error) {
-			$('#tabelPerkaraBanding').html('<div class="alert alert-danger">Terjadi kesalahan: ' + error + '</div>');
-		});
+					$('#dtPerkaraBanding').DataTable(getDataTableConfig({
+						order: [[6, 'desc']],
+						columnDefs: [
+							{ targets: 0, orderable: false, searchable: false, className: 'text-center' },
+							{ targets: [8, 9], className: 'text-center' }
+						]
+					}));
+				} else {
+					$('#tabelPerkaraBanding').html('<div class="alert alert-info">Tidak ada data perkara banding.</div>');
+				}
+			})
+			.fail(function (xhr, status, error) {
+				$('#tabelPerkaraBanding').html('<div class="alert alert-danger">Terjadi kesalahan: ' + error + '</div>');
+			});
 	}
 
 	/**
@@ -1451,9 +2552,9 @@
 				dataType: 'json',
 				cache: false
 			})
-			.done(function(response) {
-				if (response && response.length > 0) {
-					const rows = response.map((row, i) => `
+				.done(function (response) {
+					if (response && response.length > 0) {
+						const rows = response.map((row, i) => `
 						<tr class="satker-row" style="cursor: pointer" data-kode-satker="${row.kode_satker}" data-nama-satker="${row.nama_satker}">
 							<td class="text-center">${i + 1}</td>
 							<td><span class="fw-semibold">${row.kode_satker}</span></td>
@@ -1468,7 +2569,7 @@
 						</tr>
 					`).join('');
 
-					const tableHtml = `
+						const tableHtml = `
 						<div class="mb-2">
 							<button class="btn btn-sm btn-outline-primary" onclick="loadChartStatistikKasasi('401582')">
 								<i class="bx bx-arrow-back me-1"></i> Kembali ke Ringkasan
@@ -1508,29 +2609,29 @@
 						<small class="text-muted"><i class="bx bx-info-circle"></i> Klik pada baris untuk melihat detail perkara kasasi</small>
 					`;
 
-					$('#containerStatistikKasasi').html(tableHtml);
+						$('#containerStatistikKasasi').html(tableHtml);
 
-					// Initialize DataTable
-					$('#dtRingkasanKasasi').DataTable(getDataTableConfig({
-						order: [[3, 'desc']],
-						columnDefs: [
-							{ targets: 0, orderable: false, searchable: false, className: 'text-center' },
-							{ targets: [3, 4, 5, 6, 7, 8], className: 'text-center' }
-						]
-					}));
+						// Initialize DataTable
+						$('#dtRingkasanKasasi').DataTable(getDataTableConfig({
+							order: [[3, 'desc']],
+							columnDefs: [
+								{ targets: 0, orderable: false, searchable: false, className: 'text-center' },
+								{ targets: [3, 4, 5, 6, 7, 8], className: 'text-center' }
+							]
+						}));
 
-					// Bind click event for table rows
-					$('#dtRingkasanKasasi').on('click', '.satker-row', function() {
-						const satkerKode = $(this).data('kode-satker');
-						loadDetailKasasi(satkerKode, null, '401582'); // Pass MS Aceh as context
-					});
-				} else {
-					$('#containerStatistikKasasi').html('<div class="alert alert-info">Tidak ada data statistik kasasi.</div>');
-				}
-			})
-			.fail(function(xhr, status, error) {
-				$('#containerStatistikKasasi').html('<div class="alert alert-danger">Terjadi kesalahan: ' + error + '</div>');
-			});
+						// Bind click event for table rows
+						$('#dtRingkasanKasasi').on('click', '.satker-row', function () {
+							const satkerKode = $(this).data('kode-satker');
+							loadDetailKasasi(satkerKode, null, '401582'); // Pass MS Aceh as context
+						});
+					} else {
+						$('#containerStatistikKasasi').html('<div class="alert alert-info">Tidak ada data statistik kasasi.</div>');
+					}
+				})
+				.fail(function (xhr, status, error) {
+					$('#containerStatistikKasasi').html('<div class="alert alert-danger">Terjadi kesalahan: ' + error + '</div>');
+				});
 		} else {
 			// Untuk satker tingkat pertama, tampilkan chart dengan tombol detail
 			$.ajax({
@@ -1540,9 +2641,9 @@
 				dataType: 'json',
 				cache: false
 			})
-			.done(function(response) {
-				if (response.categories && response.categories.length > 0) {
-					const containerHtml = `
+				.done(function (response) {
+					if (response.categories && response.categories.length > 0) {
+						const containerHtml = `
 						<div class="mb-2 d-flex justify-content-between align-items-center">
 							<button id="btnDetailKasasi" class="btn btn-sm btn-outline-primary" data-kode-satker="${kode_satker}">
 								<i class="bx bx-list-ul me-1"></i> Lihat Detail Perkara
@@ -1551,113 +2652,113 @@
 						</div>
 						<div id="chartStatistikKasasi"></div>
 					`;
-					$('#containerStatistikKasasi').html(containerHtml);
+						$('#containerStatistikKasasi').html(containerHtml);
 
-					// Bind click event using jQuery
-					$('#btnDetailKasasi').on('click', function() {
-						const satkerKode = $(this).data('kode-satker');
-						loadDetailKasasi(satkerKode, null);
-					});
+						// Bind click event using jQuery
+						$('#btnDetailKasasi').on('click', function () {
+							const satkerKode = $(this).data('kode-satker');
+							loadDetailKasasi(satkerKode, null);
+						});
 
-					// Hitung total untuk setiap kategori
-					const totalDikabulkan = response.dikabulkan.reduce((a, b) => a + b, 0);
-					const totalDikuatkan = response.dikuatkan ? response.dikuatkan.reduce((a, b) => a + b, 0) : 0;
-					const totalDitolak = response.ditolak.reduce((a, b) => a + b, 0);
-					const totalDibatalkan = response.dibatalkan.reduce((a, b) => a + b, 0);
-					const totalDiperbaiki = response.diperbaiki ? response.diperbaiki.reduce((a, b) => a + b, 0) : 0;
-					const totalTidakDiterima = response.tidak_diterima.reduce((a, b) => a + b, 0);
-					const totalBelumPutus = response.belum_putus.reduce((a, b) => a + b, 0);
+						// Hitung total untuk setiap kategori
+						const totalDikabulkan = response.dikabulkan.reduce((a, b) => a + b, 0);
+						const totalDikuatkan = response.dikuatkan ? response.dikuatkan.reduce((a, b) => a + b, 0) : 0;
+						const totalDitolak = response.ditolak.reduce((a, b) => a + b, 0);
+						const totalDibatalkan = response.dibatalkan.reduce((a, b) => a + b, 0);
+						const totalDiperbaiki = response.diperbaiki ? response.diperbaiki.reduce((a, b) => a + b, 0) : 0;
+						const totalTidakDiterima = response.tidak_diterima.reduce((a, b) => a + b, 0);
+						const totalBelumPutus = response.belum_putus.reduce((a, b) => a + b, 0);
 
-					// Total sudah diputus dari breakdown kategori
-					const totalSudahPutusDariStatus = totalDikabulkan + totalDikuatkan + totalDitolak + totalDibatalkan + totalDiperbaiki + totalTidakDiterima;
+						// Total sudah diputus dari breakdown kategori
+						const totalSudahPutusDariStatus = totalDikabulkan + totalDikuatkan + totalDitolak + totalDibatalkan + totalDiperbaiki + totalTidakDiterima;
 
-					// Hitung grand total dari permohonan
-					const grandTotal = response.permohonan.reduce((a, b) => a + b, 0);
+						// Hitung grand total dari permohonan
+						const grandTotal = response.permohonan.reduce((a, b) => a + b, 0);
 
-					// Hitung "Diputus tapi status kosong" - selisih antara grandTotal - belum_putus dengan sum status
-					const totalDiputusStatusKosong = grandTotal - totalBelumPutus - totalSudahPutusDariStatus;
+						// Hitung "Diputus tapi status kosong" - selisih antara grandTotal - belum_putus dengan sum status
+						const totalDiputusStatusKosong = grandTotal - totalBelumPutus - totalSudahPutusDariStatus;
 
-					// Filter out categories with 0 value
-					const seriesData = [totalDikabulkan, totalDikuatkan, totalDitolak, totalDibatalkan, totalDiperbaiki, totalTidakDiterima, totalDiputusStatusKosong, totalBelumPutus];
-					const labelsData = ['Dikabulkan', 'Dikuatkan', 'Ditolak', 'Dibatalkan', 'Diperbaiki', 'Tidak Diterima', 'Diputus (Status Kosong)', 'Belum Putus'];
-					const colorsData = ['#2ecc71', '#00bc8c', '#e74c3c', '#f39c12', '#9b59b6', '#3498db', '#6c757d', '#95a5a6'];
+						// Filter out categories with 0 value
+						const seriesData = [totalDikabulkan, totalDikuatkan, totalDitolak, totalDibatalkan, totalDiperbaiki, totalTidakDiterima, totalDiputusStatusKosong, totalBelumPutus];
+						const labelsData = ['Dikabulkan', 'Dikuatkan', 'Ditolak', 'Dibatalkan', 'Diperbaiki', 'Tidak Diterima', 'Diputus (Status Kosong)', 'Belum Putus'];
+						const colorsData = ['#2ecc71', '#00bc8c', '#e74c3c', '#f39c12', '#9b59b6', '#3498db', '#6c757d', '#95a5a6'];
 
-					// Create arrays with only non-zero values
-					const filteredSeries = [];
-					const filteredLabels = [];
-					const filteredColors = [];
+						// Create arrays with only non-zero values
+						const filteredSeries = [];
+						const filteredLabels = [];
+						const filteredColors = [];
 
-					seriesData.forEach((val, idx) => {
-						if (val > 0) {
-							filteredSeries.push(val);
-							filteredLabels.push(labelsData[idx]);
-							filteredColors.push(colorsData[idx]);
-						}
-					});
+						seriesData.forEach((val, idx) => {
+							if (val > 0) {
+								filteredSeries.push(val);
+								filteredLabels.push(labelsData[idx]);
+								filteredColors.push(colorsData[idx]);
+							}
+						});
 
-					// Donut chart options
-					const options = {
-						series: filteredSeries,
-						chart: {
-							type: 'donut',
-							height: 350,
-							foreColor: '#9ba7b2',
-							toolbar: { show: false }
-						},
-						labels: filteredLabels,
-						colors: filteredColors,
-						legend: { position: 'bottom' },
-						plotOptions: {
-							pie: {
-								donut: {
-									size: '70%',
-									labels: {
-										show: true,
-										name: { show: true, fontSize: '13px' },
-										value: {
+						// Donut chart options
+						const options = {
+							series: filteredSeries,
+							chart: {
+								type: 'donut',
+								height: 350,
+								foreColor: '#9ba7b2',
+								toolbar: { show: false }
+							},
+							labels: filteredLabels,
+							colors: filteredColors,
+							legend: { position: 'bottom' },
+							plotOptions: {
+								pie: {
+									donut: {
+										size: '70%',
+										labels: {
 											show: true,
-											fontSize: '18px',
-											fontWeight: 600,
-											formatter: function (val) {
-												return val + " perkara";
-											}
-										},
-										total: {
-											show: true,
-											label: 'TOTAL PERKARA',
-											fontSize: '14px',
-											formatter: function () {
-												return grandTotal + " perkara";
+											name: { show: true, fontSize: '13px' },
+											value: {
+												show: true,
+												fontSize: '18px',
+												fontWeight: 600,
+												formatter: function (val) {
+													return val + " perkara";
+												}
+											},
+											total: {
+												show: true,
+												label: 'TOTAL PERKARA',
+												fontSize: '14px',
+												formatter: function () {
+													return grandTotal + " perkara";
+												}
 											}
 										}
 									}
 								}
-							}
-						},
-						dataLabels: {
-							enabled: true,
-							formatter: function (val) {
-								return val.toFixed(1) + "%";
-							}
-						},
-						tooltip: {
-							y: {
+							},
+							dataLabels: {
+								enabled: true,
 								formatter: function (val) {
-									return val + " perkara (" + (val / grandTotal * 100).toFixed(1) + "%)";
+									return val.toFixed(1) + "%";
+								}
+							},
+							tooltip: {
+								y: {
+									formatter: function (val) {
+										return val + " perkara (" + (val / grandTotal * 100).toFixed(1) + "%)";
+									}
 								}
 							}
-						}
-					};
+						};
 
-					let chart = new ApexCharts(document.querySelector("#chartStatistikKasasi"), options);
-					chart.render();
-				} else {
-					$('#containerStatistikKasasi').html('<div class="alert alert-info">Tidak ada data statistik kasasi.</div>');
-				}
-			})
-			.fail(function(xhr, status, error) {
-				$('#containerStatistikKasasi').html('<div class="alert alert-danger">Terjadi kesalahan: ' + error + '</div>');
-			});
+						let chart = new ApexCharts(document.querySelector("#chartStatistikKasasi"), options);
+						chart.render();
+					} else {
+						$('#containerStatistikKasasi').html('<div class="alert alert-info">Tidak ada data statistik kasasi.</div>');
+					}
+				})
+				.fail(function (xhr, status, error) {
+					$('#containerStatistikKasasi').html('<div class="alert alert-danger">Terjadi kesalahan: ' + error + '</div>');
+				});
 		}
 	}
 
@@ -1674,28 +2775,28 @@
 			kode_satker: kode_satker,
 			periode_bulan: periode_bulan
 		})
-		.done(function(response) {
-			try {
-				// Response might already be parsed by jQuery if Content-Type is application/json
-				const data = typeof response === 'string' ? JSON.parse(response) : response;
-				const { data_detail_kasasi } = data;
+			.done(function (response) {
+				try {
+					// Response might already be parsed by jQuery if Content-Type is application/json
+					const data = typeof response === 'string' ? JSON.parse(response) : response;
+					const { data_detail_kasasi } = data;
 
-				if (!data_detail_kasasi?.length) {
-					$('#containerStatistikKasasi').html('<div class="alert alert-info">Belum ada data detail perkara kasasi.</div>');
-					return;
-				}
+					if (!data_detail_kasasi?.length) {
+						$('#containerStatistikKasasi').html('<div class="alert alert-info">Belum ada data detail perkara kasasi.</div>');
+						return;
+					}
 
-				const rows = data_detail_kasasi.map((row, i) => {
-					const tglPermohonan = formatTanggal(row.tanggal_permohonan_kasasi) || '-';
-					const tahunPermohonan = row.tahun_permohonan ? `<span class="badge bg-info bg-opacity-25 text-dark">${row.tahun_permohonan}</span>` : '-';
-					const tglPutusan = row.tanggal_putusan_kasasi ? formatTanggal(row.tanggal_putusan_kasasi) : '<span class="badge bg-secondary">Belum Putus</span>';
-					const tahunPutusan = row.tahun_putusan ? `<span class="badge bg-secondary">${row.tahun_putusan}</span>` : '-';
-					const statusBadge = badgeStatusKasasi(row.status_putusan_label);
-					const nama = row.nama_terdakwa || '<span class="text-muted fst-italic">-</span>';
-					const usia = row.usia ? `<span class="badge bg-info bg-opacity-75 text-dark">${row.usia} th</span>` : '-';
-					const lamaProses = row.lama_proses_hari ? `<span class="badge bg-light text-dark">${row.lama_proses_hari} hari</span>` : '-';
+					const rows = data_detail_kasasi.map((row, i) => {
+						const tglPermohonan = formatTanggal(row.tanggal_permohonan_kasasi) || '-';
+						const tahunPermohonan = row.tahun_permohonan ? `<span class="badge bg-info bg-opacity-25 text-dark">${row.tahun_permohonan}</span>` : '-';
+						const tglPutusan = row.tanggal_putusan_kasasi ? formatTanggal(row.tanggal_putusan_kasasi) : '<span class="badge bg-secondary">Belum Putus</span>';
+						const tahunPutusan = row.tahun_putusan ? `<span class="badge bg-secondary">${row.tahun_putusan}</span>` : '-';
+						const statusBadge = badgeStatusKasasi(row.status_putusan_label);
+						const nama = row.nama_terdakwa || '<span class="text-muted fst-italic">-</span>';
+						const usia = row.usia ? `<span class="badge bg-info bg-opacity-75 text-dark">${row.usia} th</span>` : '-';
+						const lamaProses = row.lama_proses_hari ? `<span class="badge bg-light text-dark">${row.lama_proses_hari} hari</span>` : '-';
 
-					return `
+						return `
 						<tr>
 							<td class="text-center">${i + 1}</td>
 							<td><small class="fw-semibold">${row.nama_satker ?? '-'}</small></td>
@@ -1710,13 +2811,13 @@
 							<td class="text-center">${lamaProses}</td>
 						</tr>
 					`;
-				}).join('');
+					}).join('');
 
-				// Determine back button text and target based on context
-				const isFromMsAceh = parent_context === '401582';
-				const backButtonText = isFromMsAceh ? 'Kembali ke Ringkasan' : 'Kembali ke Chart';
+					// Determine back button text and target based on context
+					const isFromMsAceh = parent_context === '401582';
+					const backButtonText = isFromMsAceh ? 'Kembali ke Ringkasan' : 'Kembali ke Chart';
 
-				const tableHtml = `
+					const tableHtml = `
 					<div class="mb-2">
 						<button id="btnKembaliChart" class="btn btn-sm btn-outline-primary" data-kode-satker="${kode_satker}" data-parent-context="${parent_context || ''}">
 							<i class="bx bx-arrow-back me-1"></i> ${backButtonText}
@@ -1754,58 +2855,58 @@
 					</div>
 				`;
 
-				$('#containerStatistikKasasi').html(tableHtml);
+					$('#containerStatistikKasasi').html(tableHtml);
 
-				// Bind click event for back button
-				$('#btnKembaliChart').on('click', function() {
-					const satkerKode = $(this).data('kode-satker');
-					const parentCtx = $(this).attr('data-parent-context'); // Use attr() to get raw string value
+					// Bind click event for back button
+					$('#btnKembaliChart').on('click', function () {
+						const satkerKode = $(this).data('kode-satker');
+						const parentCtx = $(this).attr('data-parent-context'); // Use attr() to get raw string value
 
-					// If came from MS Aceh summary, return to MS Aceh summary
-					if (parentCtx === '401582') {
-						loadChartStatistikKasasi('401582');
-					} else {
-						// Otherwise return to the satker's chart
-						loadChartStatistikKasasi(satkerKode);
-					}
-				});
+						// If came from MS Aceh summary, return to MS Aceh summary
+						if (parentCtx === '401582') {
+							loadChartStatistikKasasi('401582');
+						} else {
+							// Otherwise return to the satker's chart
+							loadChartStatistikKasasi(satkerKode);
+						}
+					});
 
-				// Initialize DataTable
-				$('#dtDetailKasasi').DataTable(getDataTableConfig({
-					order: [[5, 'desc']],
-					columnDefs: [
-						{ targets: 0, orderable: false, searchable: false, className: 'text-center' },
-						{ targets: [5, 6, 8, 9], className: 'text-center' }
-					],
-					buttons: [{
-						extend: 'excelHtml5',
-						text: '<i class="bx bx-spreadsheet me-1"></i> Export Excel',
-						title: 'Detail Perkara Kasasi',
-						className: 'btn btn-sm btn-outline-success me-2',
-						exportOptions: {
-							columns: ':visible',
-							format: {
-								body: (data) => {
-									const temp = document.createElement('div');
-									temp.innerHTML = data;
-									return temp.textContent || temp.innerText || '';
+					// Initialize DataTable
+					$('#dtDetailKasasi').DataTable(getDataTableConfig({
+						order: [[5, 'desc']],
+						columnDefs: [
+							{ targets: 0, orderable: false, searchable: false, className: 'text-center' },
+							{ targets: [5, 6, 8, 9], className: 'text-center' }
+						],
+						buttons: [{
+							extend: 'excelHtml5',
+							text: '<i class="bx bx-spreadsheet me-1"></i> Export Excel',
+							title: 'Detail Perkara Kasasi',
+							className: 'btn btn-sm btn-outline-success me-2',
+							exportOptions: {
+								columns: ':visible',
+								format: {
+									body: (data) => {
+										const temp = document.createElement('div');
+										temp.innerHTML = data;
+										return temp.textContent || temp.innerText || '';
+									}
 								}
 							}
-						}
-					}, {
-						extend: 'colvis',
-						text: '<i class="bx bx-columns me-1"></i> Kolom',
-						className: 'btn btn-sm btn-outline-secondary'
-					}]
-				}));
-			} catch (e) {
-				console.error('Gagal parsing JSON:', e);
+						}, {
+							extend: 'colvis',
+							text: '<i class="bx bx-columns me-1"></i> Kolom',
+							className: 'btn btn-sm btn-outline-secondary'
+						}]
+					}));
+				} catch (e) {
+					console.error('Gagal parsing JSON:', e);
+					$('#containerStatistikKasasi').html('<div class="alert alert-danger">Gagal memuat data detail perkara kasasi.</div>');
+				}
+			})
+			.fail(function (xhr) {
 				$('#containerStatistikKasasi').html('<div class="alert alert-danger">Gagal memuat data detail perkara kasasi.</div>');
-			}
-		})
-		.fail(function(xhr) {
-			$('#containerStatistikKasasi').html('<div class="alert alert-danger">Gagal memuat data detail perkara kasasi.</div>');
-		});
+			});
 	}
 
 	/**
@@ -1843,9 +2944,9 @@
 			type: 'GET',
 			dataType: 'json'
 		})
-		.done(function(response) {
-			if (response && response.length > 0) {
-				const rows = response.map((row, i) => `
+			.done(function (response) {
+				if (response && response.length > 0) {
+					const rows = response.map((row, i) => `
 					<tr>
 						<td class="text-center">${i + 1}</td>
 						<td><span class="fw-semibold">${row.kode_satker}</span></td>
@@ -1857,7 +2958,7 @@
 					</tr>
 				`).join('');
 
-				const tableHtml = `
+					const tableHtml = `
 					<div class="table-responsive">
 						<table id="dtSinkronisasi" class="table table-striped table-bordered table-hover align-middle" style="width:100%">
 							<thead class="table-dark">
@@ -1883,22 +2984,22 @@
 					</div>
 				`;
 
-				$('#tabelSinkronisasi').html(tableHtml);
+					$('#tabelSinkronisasi').html(tableHtml);
 
-				$('#dtSinkronisasi').DataTable(getDataTableConfig({
-					order: [[6, 'desc']],
-					columnDefs: [
-						{ targets: 0, orderable: false, searchable: false, className: 'text-center' },
-						{ targets: [4, 5], className: 'text-center' }
-					]
-				}));
-			} else {
-				$('#tabelSinkronisasi').html('<div class="alert alert-info">Tidak ada data sinkronisasi.</div>');
-			}
-		})
-		.fail(function(xhr, status, error) {
-			$('#tabelSinkronisasi').html('<div class="alert alert-danger">Terjadi kesalahan: ' + error + '</div>');
-		});
+					$('#dtSinkronisasi').DataTable(getDataTableConfig({
+						order: [[6, 'desc']],
+						columnDefs: [
+							{ targets: 0, orderable: false, searchable: false, className: 'text-center' },
+							{ targets: [4, 5], className: 'text-center' }
+						]
+					}));
+				} else {
+					$('#tabelSinkronisasi').html('<div class="alert alert-info">Tidak ada data sinkronisasi.</div>');
+				}
+			})
+			.fail(function (xhr, status, error) {
+				$('#tabelSinkronisasi').html('<div class="alert alert-danger">Terjadi kesalahan: ' + error + '</div>');
+			});
 	}
 
 	/**
@@ -1920,11 +3021,11 @@
 	 */
 	function badgeStatusSinkronisasi(status) {
 		if (status === 'Aktif') {
-			return '<span class="badge bg-success">Aktif</span>';
+			return '<span class="badge bg-success">Tepat Sinkron</span>';
 		} else if (status === 'Lama') {
-			return '<span class="badge bg-warning">Lama</span>';
+			return '<span class="badge bg-warning">Telat Sinkron</span>';
 		} else if (status === 'Offline') {
-			return '<span class="badge bg-danger">Offline</span>';
+			return '<span class="badge bg-danger">Tidak Proses Sinkron</span>';
 		}
 		return '<span class="badge bg-secondary">' + status + '</span>';
 	}
@@ -2058,5 +3159,7 @@
 	window.loadChartStatistikKasasi = loadChartStatistikKasasi;
 	window.loadDetailKasasi = loadDetailKasasi;
 	window.loadDetailKasasiFromTable = loadDetailKasasiFromTable;
+
+	window.loadDashboardSAKIP = loadDashboardSAKIP;
 
 })(jQuery);
