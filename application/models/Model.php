@@ -583,6 +583,238 @@ class Model extends CI_Model
         return $this->db->query($sql)->result();
     }
 
+    public function get_tabel_faktor_perceraian($kode_satker = null, $tahun = null)
+    {
+        $this->db->select("
+        p.kode_satker,
+        p.nama_satker AS satker,
+        SUM(ac.faktor_perceraian_id = 1) AS zina,
+        SUM(ac.faktor_perceraian_id = 2) AS mabuk,
+        SUM(ac.faktor_perceraian_id = 3) AS madat,
+        SUM(ac.faktor_perceraian_id = 4) AS judi,
+        SUM(ac.faktor_perceraian_id = 5) AS meninggalkan_satu_pihak,
+        SUM(ac.faktor_perceraian_id = 6) AS penjara,
+        SUM(ac.faktor_perceraian_id = 7) AS kdrt,
+        SUM(ac.faktor_perceraian_id = 8) AS cacat,
+        SUM(ac.faktor_perceraian_id = 9) AS perselisihan,
+        SUM(ac.faktor_perceraian_id = 10) AS kawin_paksa,
+        SUM(ac.faktor_perceraian_id = 11) AS murtad,
+        SUM(ac.faktor_perceraian_id = 12) AS ekonomi,
+        SUM(ac.faktor_perceraian_id = 13) AS poligami,
+        SUM(ac.faktor_perceraian_id = 14) AS lain_lain,
+        SUM(ac.faktor_perceraian_id = 15) AS poligami_tak_sehat,
+        SUM(ac.faktor_perceraian_id = 16) AS krisis_akhlak,
+        SUM(ac.faktor_perceraian_id = 17) AS cemburu,
+        SUM(ac.faktor_perceraian_id = 18) AS tidak_tanggung_jawab,
+        SUM(ac.faktor_perceraian_id = 19) AS kawin_bawah_umur,
+        SUM(ac.faktor_perceraian_id = 20) AS dihukum,
+        SUM(ac.faktor_perceraian_id = 21) AS cacat_biologis,
+        SUM(ac.faktor_perceraian_id = 22) AS politis,
+        SUM(ac.faktor_perceraian_id = 23) AS pihak_ketiga,
+        SUM(ac.faktor_perceraian_id = 24) AS tidak_harmonis,
+        SUM(ac.faktor_perceraian_id = 25) AS kekejaman_jasmani,
+        SUM(ac.faktor_perceraian_id = 26) AS kekejaman_mental,
+
+        COUNT(CASE
+            WHEN (
+                ac.faktor_perceraian_id IS NOT NULL
+            )
+        THEN 1 END) AS jumlah_faktor_perceraian,
+        ", false);
+
+        $this->db->from('fact_perkara p');
+        $this->db->join('fact_perkara_akta_cerai ac', 'ac.perkara_id = p.perkara_id AND p.kode_satker = ac.kode_satker', 'left');
+        $this->db->where('p.tanggal_putusan IS NOT NULL', null, false);
+
+        if (!empty($kode_satker) && $kode_satker != '401582') {
+            $this->db->where('p.kode_satker', $kode_satker);
+        }
+
+        if (!empty($tahun)) {
+            $this->db->where('YEAR(p.tanggal_putusan)', $tahun);
+        }
+
+        $this->db->group_by('p.kode_satker');
+        $this->db->order_by('p.kode_satker', 'DESC');
+
+        return $this->db->get()->result();
+    }
+
+    public function get_tabel_faktor_perceraian_satker($kode_satker = null, $tahun = null)
+    {
+        $this->db->select("
+        MONTH(p.tanggal_putusan) as bulan,
+        SUM(ac.faktor_perceraian_id = 1) AS zina,
+        SUM(ac.faktor_perceraian_id = 2) AS mabuk,
+        SUM(ac.faktor_perceraian_id = 3) AS madat,
+        SUM(ac.faktor_perceraian_id = 4) AS judi,
+        SUM(ac.faktor_perceraian_id = 5) AS meninggalkan_satu_pihak,
+        SUM(ac.faktor_perceraian_id = 6) AS penjara,
+        SUM(ac.faktor_perceraian_id = 7) AS kdrt,
+        SUM(ac.faktor_perceraian_id = 8) AS cacat,
+        SUM(ac.faktor_perceraian_id = 9) AS perselisihan,
+        SUM(ac.faktor_perceraian_id = 10) AS kawin_paksa,
+        SUM(ac.faktor_perceraian_id = 11) AS murtad,
+        SUM(ac.faktor_perceraian_id = 12) AS ekonomi,
+        SUM(ac.faktor_perceraian_id = 13) AS poligami,
+        SUM(ac.faktor_perceraian_id = 14) AS lain_lain,
+        SUM(ac.faktor_perceraian_id = 15) AS poligami_tak_sehat,
+        SUM(ac.faktor_perceraian_id = 16) AS krisis_akhlak,
+        SUM(ac.faktor_perceraian_id = 17) AS cemburu,
+        SUM(ac.faktor_perceraian_id = 18) AS tidak_tanggung_jawab,
+        SUM(ac.faktor_perceraian_id = 19) AS kawin_bawah_umur,
+        SUM(ac.faktor_perceraian_id = 20) AS dihukum,
+        SUM(ac.faktor_perceraian_id = 21) AS cacat_biologis,
+        SUM(ac.faktor_perceraian_id = 22) AS politis,
+        SUM(ac.faktor_perceraian_id = 23) AS pihak_ketiga,
+        SUM(ac.faktor_perceraian_id = 24) AS tidak_harmonis,
+        SUM(ac.faktor_perceraian_id = 25) AS kekejaman_jasmani,
+        SUM(ac.faktor_perceraian_id = 26) AS kekejaman_mental,
+
+        COUNT(CASE
+            WHEN (
+                ac.faktor_perceraian_id IS NOT NULL
+            )
+        THEN 1 END) AS jumlah_faktor_perceraian,
+        ", false);
+
+        $this->db->from('fact_perkara p');
+        $this->db->join('fact_perkara_akta_cerai ac', 'ac.perkara_id = p.perkara_id AND p.kode_satker = ac.kode_satker', 'left');
+        $this->db->where('p.tanggal_putusan IS NOT NULL', null, false);
+
+        if (!empty($kode_satker) && $kode_satker != '401582') {
+            $this->db->where('p.kode_satker', $kode_satker);
+        }
+
+        if (!empty($tahun)) {
+            $this->db->where('YEAR(p.tanggal_putusan)', $tahun);
+        }
+
+        $this->db->group_by('MONTH(p.tanggal_putusan)');
+        $this->db->order_by('MONTH(p.tanggal_putusan)', 'DESC');
+
+        return $this->db->get()->result();
+    }
+
+    public function get_tabel_perkara_terima($kode_satker = null, $tahun = null)
+    {
+        $this->db->select("
+        kode_satker,
+        nama_satker AS satker,
+        SUM(jenis_perkara_id = 341) AS izin_poligami,
+        SUM(jenis_perkara_id = 342) AS pencegahan_perkawinan,
+        SUM(jenis_perkara_id = 343) AS penolakan_perkawinan,
+        SUM(jenis_perkara_id = 344) AS pembatalan_perkawinan,
+        SUM(jenis_perkara_id = 345) AS kelalaian_atas_kewajiban,
+        SUM(jenis_perkara_id = 346) AS ct,
+        SUM(jenis_perkara_id = 347) AS cg,
+        SUM(jenis_perkara_id = 348) AS harta_bersama,
+        SUM(jenis_perkara_id = 349) AS penguasaan_anak,
+        SUM(jenis_perkara_id = 350) AS nafkah_anak,
+        SUM(jenis_perkara_id = 351) AS hak_bekas_istri,
+        SUM(jenis_perkara_id = 352) AS pengangkatan_anak,
+        SUM(jenis_perkara_id = 353) AS pencabutan_ortu,
+        SUM(jenis_perkara_id = 354) AS perwalian,
+        SUM(jenis_perkara_id = 355) AS pencabutan_wali,
+        SUM(jenis_perkara_id = 356) AS penunjukan_wali,
+        SUM(jenis_perkara_id = 357) AS ganti_rugi_wali,
+        SUM(jenis_perkara_id = 358) AS asal_usul_anak,
+        SUM(jenis_perkara_id = 359) AS penolakan_kawin_campuran,
+        SUM(jenis_perkara_id = 360) AS istbat_nikah,
+        SUM(jenis_perkara_id = 361) AS izin_kawin,
+        SUM(jenis_perkara_id = 362) AS dispen_kawin,
+        SUM(jenis_perkara_id = 363) AS wali_adhol,
+        SUM(jenis_perkara_id = 364) AS kewarisan,
+        SUM(jenis_perkara_id = 365) AS wasiat,
+        SUM(jenis_perkara_id = 366) AS hibah,
+        SUM(jenis_perkara_id = 367) AS wakaf,
+        SUM(jenis_perkara_id = 368) AS zis,
+        SUM(jenis_perkara_id = 369) AS lainnya,
+        SUM(jenis_perkara_id = 370) AS esyar,
+        SUM(jenis_perkara_id = 371) AS paw,
+
+        COUNT(CASE
+            WHEN (
+                jenis_perkara_id IS NOT NULL
+            )
+        THEN 1 END) AS jumlah_perkara_terima,
+        ", false);
+
+        $this->db->from('fact_perkara');
+
+        if (!empty($kode_satker) && $kode_satker != '401582') {
+            $this->db->where('kode_satker', $kode_satker);
+        }
+
+        if (!empty($tahun)) {
+            $this->db->where('YEAR(tanggal_pendaftaran)', $tahun);
+        }
+
+        $this->db->group_by('kode_satker');
+        $this->db->order_by('kode_satker', 'DESC');
+
+        return $this->db->get()->result();
+    }
+
+    public function get_tabel_perkara_terima_satker($kode_satker = null, $tahun = null)
+    {
+        $this->db->select("
+        MONTH(tanggal_pendaftaran) as bulan,
+        SUM(jenis_perkara_id = 341) AS izin_poligami,
+        SUM(jenis_perkara_id = 342) AS pencegahan_perkawinan,
+        SUM(jenis_perkara_id = 343) AS penolakan_perkawinan,
+        SUM(jenis_perkara_id = 344) AS pembatalan_perkawinan,
+        SUM(jenis_perkara_id = 345) AS kelalaian_atas_kewajiban,
+        SUM(jenis_perkara_id = 346) AS ct,
+        SUM(jenis_perkara_id = 347) AS cg,
+        SUM(jenis_perkara_id = 348) AS harta_bersama,
+        SUM(jenis_perkara_id = 349) AS penguasaan_anak,
+        SUM(jenis_perkara_id = 350) AS nafkah_anak,
+        SUM(jenis_perkara_id = 351) AS hak_bekas_istri,
+        SUM(jenis_perkara_id = 352) AS pengangkatan_anak,
+        SUM(jenis_perkara_id = 353) AS pencabutan_ortu,
+        SUM(jenis_perkara_id = 354) AS perwalian,
+        SUM(jenis_perkara_id = 355) AS pencabutan_wali,
+        SUM(jenis_perkara_id = 356) AS penunjukan_wali,
+        SUM(jenis_perkara_id = 357) AS ganti_rugi_wali,
+        SUM(jenis_perkara_id = 358) AS asal_usul_anak,
+        SUM(jenis_perkara_id = 359) AS penolakan_kawin_campuran,
+        SUM(jenis_perkara_id = 360) AS istbat_nikah,
+        SUM(jenis_perkara_id = 361) AS izin_kawin,
+        SUM(jenis_perkara_id = 362) AS dispen_kawin,
+        SUM(jenis_perkara_id = 363) AS wali_adhol,
+        SUM(jenis_perkara_id = 364) AS kewarisan,
+        SUM(jenis_perkara_id = 365) AS wasiat,
+        SUM(jenis_perkara_id = 366) AS hibah,
+        SUM(jenis_perkara_id = 367) AS wakaf,
+        SUM(jenis_perkara_id = 368) AS zis,
+        SUM(jenis_perkara_id = 369) AS lainnya,
+        SUM(jenis_perkara_id = 370) AS esyar,
+        SUM(jenis_perkara_id = 371) AS paw,
+
+        COUNT(CASE
+            WHEN (
+                jenis_perkara_id IS NOT NULL
+            )
+        THEN 1 END) AS jumlah_perkara_terima,
+        ", false);
+
+        $this->db->from('fact_perkara');
+
+        if (!empty($kode_satker) && $kode_satker != '401582') {
+            $this->db->where('kode_satker', $kode_satker);
+        }
+
+        if (!empty($tahun)) {
+            $this->db->where('YEAR(tanggal_pendaftaran)', $tahun);
+        }
+
+        $this->db->group_by('MONTH(tanggal_pendaftaran)');
+        $this->db->order_by('MONTH(tanggal_pendaftaran)', 'DESC');
+
+        return $this->db->get()->result();
+    }
+
     public function get_kpi_summary($kode_satker = null, $filter_tahun = null)
     {
         // Tentukan tahun berdasarkan filter atau tahun berjalan

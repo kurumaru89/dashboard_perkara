@@ -140,9 +140,11 @@
                                     <label class="form-label">Filter Tahun</label>
                                     <select class="form-select w-100" id="filter_tahun">
                                         <option value="">Semua Tahun</option>
-                                        <option value="2024">2024</option>
-                                        <option value="2025">2025</option>
-                                        <option value="2026">2026</option>
+                                        <?php foreach ($tahun_perkara as $row) { ?>
+                                            <option value="<?= $row->tahun ?>">
+                                                <?= $row->tahun ?>
+                                            </option>
+                                        <?php } ?>
                                     </select>
                                 </div>
 
@@ -291,6 +293,79 @@
                             <div id="bodyJinayatKasasi" class="collapse show">
                                 <div class="card-body">
                                     <div id="tabelPerkaraJinayatKasasi"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="col-12">
+                        <div class="card card-collapsible">
+                            <div class="card-header d-flex justify-content-between align-items-center">
+                                <span><i class="bx bx-bar-chart-alt-2 me-2"></i> Rekapitulasi Faktor-Faktor Penyebab
+                                    Perceraian</span>
+                                <button class="btn btn-sm btn-light btn-collapse" type="button"
+                                    data-bs-toggle="collapse" data-bs-target="#bodyFaktorPerceraian"
+                                    aria-expanded="true" aria-label="Toggle Faktor Penyebab Perceraian">
+                                    <i class="bx bx-chevron-up"></i>
+                                </button>
+                            </div>
+                            <div id="bodyFaktorPerceraian" class="collapse show">
+                                <div class="card-body">
+                                    <div class="row">
+                                        <div class="col-12">
+                                            <div id="tabelFaktorPerceraian"></div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="col-12">
+                        <div class="card card-collapsible">
+                            <div class="card-header d-flex justify-content-between align-items-center">
+                                <span><i class="bx bx-bar-chart-alt-2 me-2"></i> Rekapitulasi Perkara Diterima Berdasarkan Jenis Perkara</span>
+                                <button class="btn btn-sm btn-light btn-collapse" type="button"
+                                    data-bs-toggle="collapse" data-bs-target="#bodyPerkaraTerima"
+                                    aria-expanded="true" aria-label="Toggle Perkara Terima">
+                                    <i class="bx bx-chevron-up"></i>
+                                </button>
+                            </div>
+                            <div id="bodyPerkaraTerima" class="collapse show">
+                                <div class="card-body">
+                                    <div class="row">
+                                        <div class="col-12">
+                                            <div id="tabelPerkaraTerima"></div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="col-12">
+                        <div class="card card-collapsible">
+                            <div class="card-header d-flex justify-content-between align-items-center">
+                                <span><i class="bx bx-bar-chart-alt-2 me-2"></i> Rekapitulasi Perkara Diputus Berdasarkan Jenis Perkara</span>
+                                <button class="btn btn-sm btn-light btn-collapse" type="button"
+                                    data-bs-toggle="collapse" data-bs-target="#bodyPerkaraPutus"
+                                    aria-expanded="true" aria-label="Toggle Perkara Putus">
+                                    <i class="bx bx-chevron-up"></i>
+                                </button>
+                            </div>
+                            <div id="bodyPerkaraPutus" class="collapse show">
+                                <div class="card-body">
+                                    <div class="row">
+                                        <div class="col-12">
+                                            <div id="tabelPerkaraPutus"></div>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
                         </div>

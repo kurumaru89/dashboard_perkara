@@ -293,6 +293,83 @@
 		};
 	}
 
+	function getDataTableConfigSatker(options = {}) {
+		const {
+			order = [[0, 'desc']],
+			pageLength = 10,
+			columnDefs = [],
+			buttons = [],
+			onInitComplete = null
+		} = options;
+
+		return {
+			order: order,
+			pageLength: pageLength,
+			lengthMenu: [
+				[10, 25, 50, 100],
+				['10 baris', '25 baris', '50 baris', '100 baris']
+			],
+			dom: "<'row mt-2'<'col-sm-12'B>>" +
+				"<'row mb-3'" +
+				"  <'col-sm-12 col-md-4'd>" +
+				"  <'col-sm-12 col-md-4'l>" +
+				"  <'col-sm-12 col-md-4'f>" +
+				">" +
+				"<'row'<'col-sm-12'tr>>" +
+				"<'row mt-2'" +
+				"  <'col-sm-12 col-md-5'i>" +
+				"  <'col-sm-12 col-md-7'p>" +
+				">",
+			buttons: buttons.length > 0 ? buttons : [
+				{
+					extend: 'excelHtml5',
+					text: '<i class="bx bx-spreadsheet me-1"></i> Export Excel',
+					className: 'btn btn-sm btn-outline-success me-2',
+					exportOptions: {
+						columns: ':visible',
+						format: {
+							body: (data) => {
+								const temp = document.createElement('div');
+								temp.innerHTML = data;
+								return temp.textContent || temp.innerText || '';
+							}
+						}
+					}
+				},
+				{
+					extend: 'colvis',
+					text: '<i class="bx bx-columns me-1"></i> Kolom',
+					className: 'btn btn-sm btn-outline-secondary'
+				}
+			],
+			language: {
+				search: '',
+				searchPlaceholder: 'Cari satuan kerja...',
+				lengthMenu: 'Tampilkan _MENU_',
+				info: 'Menampilkan _START_ - _END_ dari _TOTAL_ satuan kerja',
+				infoEmpty: 'Tidak ada data',
+				infoFiltered: '(difilter dari _MAX_ total satuan kerja)',
+				zeroRecords: 'Tidak ditemukan satuan kerja yang sesuai',
+				paginate: {
+					first: '<i class="bx bx-chevrons-left"></i>',
+					last: '<i class="bx bx-chevrons-right"></i>',
+					next: '<i class="bx bx-chevron-right"></i>',
+					previous: '<i class="bx bx-chevron-left"></i>'
+				}
+			},
+			columnDefs: columnDefs,
+			drawCallback: function () {
+				const api = this.api();
+				api.column(0, { search: 'applied', order: 'applied', page: 'current' })
+					.nodes()
+					.each(function (cell, i) {
+						cell.innerHTML = api.page.info().start + i + 1;
+					});
+			},
+			initComplete: onInitComplete || function () { }
+		};
+	}
+
 	/**
 	 * Destroy DataTable dengan error handling
 	 */
@@ -573,7 +650,9 @@
 				loadTabelPerkaraJinayatKasasi(...params),
 				loadChartJinayat(...params),
 				loadTabelPerkaraBanding(...params),
-				loadChartStatistikKasasi(kode)
+				loadChartStatistikKasasi(kode),
+				loadTabelFaktorPerceraian(kode, filter_tahun),
+				loadTabelPerkaraTerima(kode, filter_tahun)
 			];
 
 			// Tambah loadTabelSinkronisasi hanya untuk MS Aceh
@@ -2174,7 +2253,7 @@
 				$('#tabelJinayatTepat').html('<div class="alert alert-danger">Terjadi kesalahan: ' + error + '</div>');
 			});
 	}
-	
+
 	function loadTabelProdeo(kode_satker, tahun) {
 		$('#tabelProdeo').html('<div class="text-center py-5"><div class="spinner-border text-primary" role="status"></div></div>');
 
@@ -2284,45 +2363,45 @@
 				`).join('');
 
 					const tableHtml = `
-					<div class="mb-2">
-						<button class="btn btn-sm btn-outline-primary" onclick="loadRingkasanPerkaraBanding()">
-							<i class="bx bx-refresh me-1"></i> Refresh Ringkasan
-						</button>
-					</div>
-					<div class="table-responsive">
-						<table id="dtRingkasanBanding" class="table table-striped table-bordered table-hover align-middle" style="width:100%">
-							<thead class="table-dark">
-								<tr>
-									<th class="text-center" style="width:45px">No</th>
-									<th style="width:80px">Kode</th>
-									<th>Satuan Kerja Asal</th>
-									<th class="text-center">Total</th>
-									<th class="text-center">Sudah Diputus</th>
-									<th class="text-center">Dalam Proses</th>
-									<th class="text-center">Dicabut</th>
-									<th class="text-center">Rata-rata Lama</th>
-								</tr>
-							</thead>
-							<tbody>${rows}</tbody>
-							<tfoot class="table-light">
-								<tr>
-									<th colspan="3" class="text-end pe-3">Total:</th>
-									<th class="text-center">${response.reduce((sum, r) => sum + Number(r.total_perkara_banding), 0)}</th>
-									<th class="text-center">${response.reduce((sum, r) => sum + Number(r.sudah_diputus), 0)}</th>
-									<th class="text-center">${response.reduce((sum, r) => sum + Number(r.dalam_proses), 0)}</th>
-									<th class="text-center">${response.reduce((sum, r) => sum + Number(r.dicabut), 0)}</th>
-									<th class="text-center">${Math.round(response.reduce((sum, r) => sum + (Number(r.rata_rata_lama_proses) * Number(r.total_perkara_banding)), 0) / response.reduce((sum, r) => sum + r.total_perkara_banding, 0))} hari</th>
-								</tr>
-							</tfoot>
-						</table>
-					</div>
-					<small class="text-muted"><i class="bx bx-info-circle"></i> Klik pada baris untuk melihat detail perkara banding</small>
-				`;
+						<div class="mb-2">
+							<button class="btn btn-sm btn-outline-primary" onclick="loadRingkasanPerkaraBanding()">
+								<i class="bx bx-refresh me-1"></i> Refresh Ringkasan
+							</button>
+						</div>
+						<div class="table-responsive">
+							<table id="dtRingkasanBanding" class="table table-striped table-bordered table-hover align-middle" style="width:100%">
+								<thead class="table-dark">
+									<tr>
+										<th class="text-center" style="width:45px">No</th>
+										<th style="width:80px">Kode</th>
+										<th>Satuan Kerja Asal</th>
+										<th class="text-center">Total</th>
+										<th class="text-center">Sudah Diputus</th>
+										<th class="text-center">Dalam Proses</th>
+										<th class="text-center">Dicabut</th>
+										<th class="text-center">Rata-rata Lama</th>
+									</tr>
+								</thead>
+								<tbody>${rows}</tbody>
+								<tfoot class="table-light">
+									<tr>
+										<th colspan="3" class="text-end pe-3">Total:</th>
+										<th class="text-center">${response.reduce((sum, r) => sum + Number(r.total_perkara_banding), 0)}</th>
+										<th class="text-center">${response.reduce((sum, r) => sum + Number(r.sudah_diputus), 0)}</th>
+										<th class="text-center">${response.reduce((sum, r) => sum + Number(r.dalam_proses), 0)}</th>
+										<th class="text-center">${response.reduce((sum, r) => sum + Number(r.dicabut), 0)}</th>
+										<th class="text-center">${Math.round(response.reduce((sum, r) => sum + (Number(r.rata_rata_lama_proses) * Number(r.total_perkara_banding)), 0) / response.reduce((sum, r) => sum + r.total_perkara_banding, 0))} hari</th>
+									</tr>
+								</tfoot>
+							</table>
+						</div>
+						<small class="text-muted"><i class="bx bx-info-circle"></i> Klik pada baris untuk melihat detail perkara banding</small>
+					`;
 
 					$('#tabelPerkaraBanding').html(tableHtml);
 
 					// Initialize DataTable
-					$('#dtRingkasanBanding').DataTable(getDataTableConfig({
+					$('#dtRingkasanBanding').DataTable(getDataTableConfigSatker({
 						order: [[3, 'desc']],
 						columnDefs: [
 							{ targets: 0, orderable: false, searchable: false, className: 'text-center' },
@@ -2472,52 +2551,52 @@
 						const tahunPutusan = row.tahun_putusan ? `<span class="badge bg-secondary">${row.tahun_putusan}</span>` : '-';
 
 						return `
-					<tr>
-						<td class="text-center">${i + 1}</td>
-						<td>${row.nama_satker_asal ?? '-'}</td>
-						<td><span class="fw-semibold text-primary">${row.nomor_perkara_pertama ?? '-'}</span></td>
-						<td><span class="fw-semibold text-primary">${row.nomor_perkara_banding || '-'}</span></td>
-						<td>${row.jenis_perkara_nama ?? '-'}</td>
-						<td data-order="${row.tanggal_pendaftaran_banding || ''}">${tglDaftar}<br><small class="text-muted">${tahunDaftar}</small></td>
-						<td data-order="${row.tanggal_putusan_banding || ''}">${tglPutusan}<br><small class="text-muted">${tahunPutusan}</small></td>
-						<td>${row.ketua_majelis || '-'}</td>
-						<td class="text-center">${badgeStatusProses(row.status_proses)}</td>
-						<td class="text-center">${row.lama_proses_hari ?? '-'}</td>
-					</tr>
-				`;
+							<tr>
+								<td class="text-center">${i + 1}</td>
+								<td>${row.nama_satker_asal ?? '-'}</td>
+								<td><span class="fw-semibold text-primary">${row.nomor_perkara_pertama ?? '-'}</span></td>
+								<td><span class="fw-semibold text-primary">${row.nomor_perkara_banding || '-'}</span></td>
+								<td>${row.jenis_perkara_nama ?? '-'}</td>
+								<td data-order="${row.tanggal_pendaftaran_banding || ''}">${tglDaftar}<br><small class="text-muted">${tahunDaftar}</small></td>
+								<td data-order="${row.tanggal_putusan_banding || ''}">${tglPutusan}<br><small class="text-muted">${tahunPutusan}</small></td>
+								<td>${row.ketua_majelis || '-'}</td>
+								<td class="text-center">${badgeStatusProses(row.status_proses)}</td>
+								<td class="text-center">${row.lama_proses_hari ?? '-'}</td>
+							</tr>
+						`;
 					}).join('');
 
 					const tableHtml = `
-					<div class="mb-2">
-						<small class="text-muted"><i class="bx bx-info-circle"></i> Data perkara banding dari tahun 2016 - 2025</small>
-					</div>
-					<div class="table-responsive">
-						<table id="dtPerkaraBanding" class="table table-striped table-bordered table-hover align-middle" style="width:100%">
-							<thead class="table-dark">
-								<tr>
-									<th class="text-center" style="width:45px">No</th>
-									<th>Satker Asal</th>
-									<th>No. Perkara Pertama</th>
-									<th>No. Perkara Banding</th>
-									<th>Jenis Perkara</th>
-									<th>Tgl. Daftar Banding</th>
-									<th>Tgl. Putusan</th>
-									<th>Ketua Majelis</th>
-									<th class="text-center">Status</th>
-									<th class="text-center">Lama (Hari)</th>
-								</tr>
-							</thead>
-							<tbody>${rows}</tbody>
-							<tfoot class="table-light">
-								<tr>
-									<th colspan="10" class="text-end pe-3">
-										Total Perkara: <span class="badge bg-dark fs-6">${response.data_perkara_banding.length}</span>
-									</th>
-								</tr>
-							</tfoot>
-						</table>
-					</div>
-				`;
+						<div class="mb-2">
+							<small class="text-muted"><i class="bx bx-info-circle"></i> Data perkara banding dari tahun 2016 - 2025</small>
+						</div>
+						<div class="table-responsive">
+							<table id="dtPerkaraBanding" class="table table-striped table-bordered table-hover align-middle" style="width:100%">
+								<thead class="table-dark">
+									<tr>
+										<th class="text-center" style="width:45px">No</th>
+										<th>Satker Asal</th>
+										<th>No. Perkara Pertama</th>
+										<th>No. Perkara Banding</th>
+										<th>Jenis Perkara</th>
+										<th>Tgl. Daftar Banding</th>
+										<th>Tgl. Putusan</th>
+										<th>Ketua Majelis</th>
+										<th class="text-center">Status</th>
+										<th class="text-center">Lama (Hari)</th>
+									</tr>
+								</thead>
+								<tbody>${rows}</tbody>
+								<tfoot class="table-light">
+									<tr>
+										<th colspan="10" class="text-end pe-3">
+											Total Perkara: <span class="badge bg-dark fs-6">${response.data_perkara_banding.length}</span>
+										</th>
+									</tr>
+								</tfoot>
+							</table>
+						</div>
+					`;
 
 					$('#tabelPerkaraBanding').html(tableHtml);
 
@@ -2612,7 +2691,7 @@
 						$('#containerStatistikKasasi').html(tableHtml);
 
 						// Initialize DataTable
-						$('#dtRingkasanKasasi').DataTable(getDataTableConfig({
+						$('#dtRingkasanKasasi').DataTable(getDataTableConfigSatker({
 							order: [[3, 'desc']],
 							columnDefs: [
 								{ targets: 0, orderable: false, searchable: false, className: 'text-center' },
@@ -2986,7 +3065,7 @@
 
 					$('#tabelSinkronisasi').html(tableHtml);
 
-					$('#dtSinkronisasi').DataTable(getDataTableConfig({
+					$('#dtSinkronisasi').DataTable(getDataTableConfigSatker({
 						order: [[6, 'desc']],
 						columnDefs: [
 							{ targets: 0, orderable: false, searchable: false, className: 'text-center' },
@@ -3030,6 +3109,638 @@
 		return '<span class="badge bg-secondary">' + status + '</span>';
 	}
 
+	function loadTabelFaktorPerceraian(kode, tahun) {
+		// Jika MS Aceh (tingkat banding), tampilkan ringkasan per satker dulu
+		if (kode === '401582') {
+			loadTabelRekapFaktorPerceraian(kode, tahun);
+		} else {
+			// Untuk satker lain, load detail langsung (existing behavior)
+			loadDetailFaktorPerceraianBySatker(kode, tahun);
+		}
+	}
+
+	function loadTabelRekapFaktorPerceraian(kode_satker, tahun) {
+		const faktorCols = [
+			'zina', 'mabuk', 'madat', 'judi', 'meninggalkan_satu_pihak', 'penjara',
+			'kdrt', 'cacat', 'perselisihan', 'kawin_paksa', 'murtad', 'ekonomi',
+			'poligami', 'lain_lain', 'poligami_tak_sehat', 'krisis_akhlak',
+			'cemburu', 'tidak_tanggung_jawab', 'kawin_bawah_umur', 'dihukum',
+			'cacat_biologis', 'politis', 'pihak_ketiga', 'tidak_harmonis',
+			'kekejaman_jasmani', 'kekejaman_mental', 'jumlah_faktor_perceraian'
+		];
+
+		$('#tabelFaktorPerceraian').html('<div class="text-center py-5"><div class="spinner-border text-primary" role="status"></div></div>');
+
+		$.ajax({
+			url: 'get_tabel_faktor_perceraian',
+			type: 'POST',
+			data: { kode_satker: kode_satker, tahun: tahun },
+			dataType: 'json',
+			cache: false
+		})
+			.done(function (response) {
+				const res = response.data
+				if (res && res.length > 0) {
+					const rows = res.map((row, i) => {
+
+						const faktorCells = faktorCols
+							.map(col => `<td class="text-center">${row[col]}</td>`)
+							.join('');
+
+						return `
+						<tr class="satker-row" style="cursor:pointer"
+							data-kode-satker="${row.kode_satker}"
+							data-satker="${row.satker}">
+							<td class="text-center">${i + 1}</td>
+							<td><span class="fw-semibold">${row.satker}</span></td>
+							${faktorCells}
+						</tr>
+						`;
+					}).join('');
+
+					// hitung total
+					const totals = {};
+					faktorCols.forEach(col => totals[col] = 0);
+
+					res.forEach(r => {
+						faktorCols.forEach(col => {
+							totals[col] += Number(r[col] || 0);
+						});
+					});
+
+					const footerCells = faktorCols
+						.map(col => `<th class="text-center">${totals[col]}</th>`)
+						.join('');
+
+					const tableHtml = `
+						<div class="table-responsive">
+							<table id="tabelFaktorPerceraianData" class="table table-striped table-bordered table-hover align-middle" style="width:100%">
+								<thead class="table-dark">
+									<tr>
+										<th class="text-center" style="width:45px">No</th>
+										<th>Satuan Kerja</th>
+										<th class="text-center">Zina</th>
+										<th class="text-center">Mabuk</th>
+										<th class="text-center">Madat</th>
+										<th class="text-center">Judi</th>
+										<th class="text-center">Meninggalkan Satu Pihak</th>
+										<th class="text-center">Penjara</th>
+										<th class="text-center">KDRT</th>
+										<th class="text-center">Cacat</th>
+										<th class="text-center">Perselisihan</th>
+										<th class="text-center">Kawin Paksa</th>
+										<th class="text-center">Murtad</th>
+										<th class="text-center">Ekonomi</th>
+										<th class="text-center">Poligami</th>
+										<th class="text-center">Lain Lain</th>
+										<th class="text-center">Poligami Tak Sehat</th>
+										<th class="text-center">Krisis Akhlak</th>
+										<th class="text-center">Cemburu</th>
+										<th class="text-center">Tidak Tanggung Jawab</th>
+										<th class="text-center">Kawin Bawah Umur</th>
+										<th class="text-center">Dihukum</th>
+										<th class="text-center">Cacat Biologis</th>
+										<th class="text-center">Politis</th>
+										<th class="text-center">Pihak Ketiga</th>
+										<th class="text-center">Tidak Harmonis</th>
+										<th class="text-center">Kekejaman Jasmani</th>
+										<th class="text-center">Kekejaman Mental</th>
+										<th class="text-center">Jumlah Faktor Perceraian</th>
+									</tr>
+								</thead>
+								<tbody>${rows}</tbody>
+								<tfoot class="table-light">
+									<tr>
+										<th colspan="2" class="text-end pe-3">Total:</th>
+										${footerCells}
+									</tr>
+								</tfoot>
+							</table>
+						</div>
+						<small class="text-muted"><i class="bx bx-info-circle"></i> Klik pada nama satuan kerja untuk melihat detail faktor perceraian</small>
+					`;
+
+					$('#tabelFaktorPerceraian').html(tableHtml);
+
+					// Initialize DataTable
+					$('#tabelFaktorPerceraianData').DataTable(getDataTableConfigSatker({
+						columnDefs: [
+							{ targets: 0, orderable: false, searchable: false, className: 'text-center' },
+							{ targets: [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21], className: 'text-center' }
+						]
+					}));
+
+					// Bind click event for table rows
+					$('#tabelFaktorPerceraianData').on('click', '.satker-row', function () {
+						const satkerKode = $(this).data('kode-satker');
+						const satker = $(this).data('satker');
+						const tahun_filter = document.getElementById('filter_tahun')?.value || null;
+						loadDetailFaktorPerceraianBySatker(satkerKode, tahun_filter);
+					});
+				} else {
+					$('#tabelFaktorPerceraian').html('<div class="alert alert-info">Data tidak ditemukan.</div>');
+				}
+			})
+			.fail(function (xhr, status, error) {
+				$('#tabelFaktorPerceraian').html('<div class="alert alert-danger">Terjadi kesalahan: ' + error + '</div>');
+			});
+	}
+
+	function loadDetailFaktorPerceraianBySatker(kode_satker, tahun) {
+
+		const faktor = [
+			'zina', 'mabuk', 'madat', 'judi', 'meninggalkan_satu_pihak', 'penjara',
+			'kdrt', 'cacat', 'perselisihan', 'kawin_paksa', 'murtad', 'ekonomi',
+			'poligami', 'lain_lain', 'poligami_tak_sehat', 'krisis_akhlak',
+			'cemburu', 'tidak_tanggung_jawab', 'kawin_bawah_umur', 'dihukum',
+			'cacat_biologis', 'politis', 'pihak_ketiga', 'tidak_harmonis',
+			'kekejaman_jasmani', 'kekejaman_mental'
+		];
+
+		const allCols = [...faktor, 'jumlah_faktor_perceraian'];
+
+		$('#tabelFaktorPerceraian').html(
+			'<div class="text-center py-5"><div class="spinner-border text-primary"></div></div>'
+		);
+
+		$.ajax({
+			url: 'get_tabel_faktor_perceraian_satker',
+			type: 'POST',
+			data: { kode_satker: kode_satker, tahun: tahun },
+			dataType: 'json',
+			cache: false
+		})
+			.done(function (response) {
+
+				const res = response.data;
+
+				if (res && res.length > 0) {
+
+					// Generate rows
+					const rows = res.map((row, i) => {
+
+						const cols = faktor.map(f =>
+							`<td class="text-center">${row[f]}</td>`
+						).join('');
+
+						return `
+					<tr>
+						<td class="text-center">${i + 1}</td>
+						<td><span class="fw-semibold">${row.bulan}</span></td>
+						${cols}
+						<td class="text-center">${row.jumlah_faktor_perceraian}</td>
+					</tr>
+					`;
+
+					}).join('');
+
+					// Hitung total
+					const totals = {};
+
+					allCols.forEach(f => totals[f] = 0);
+
+					res.forEach(r => {
+						allCols.forEach(f => {
+							totals[f] += Number(r[f] || 0);
+						});
+					});
+
+					const footerCols = faktor.map(f =>
+						`<th class="text-center">${totals[f]}</th>`
+					).join('');
+
+					const tableHtml = `
+					<div class="mb-2">
+						<button id="btnKembaliRekap" class="btn btn-sm btn-outline-primary">
+							<i class="bx bx-arrow-back me-1"></i> Kembali ke Rekapitulasi
+						</button>
+					</div>
+		
+					<div class="mb-2">
+						<small class="text-muted">
+							<i class="bx bx-info-circle"></i>
+							Data Rekapitulasi Faktor Perceraian tahun ${tahun}
+						</small>
+					</div>
+		
+					<div class="table-responsive">
+		
+						<table id="tabelFaktorPerceraianData"
+							class="table table-striped table-bordered table-hover align-middle"
+							style="width:100%">
+		
+							<thead class="table-dark">
+								<tr>
+									<th class="text-center" style="width:45px">No</th>
+									<th>Bulan</th>
+									<th class="text-center">Zina</th>
+									<th class="text-center">Mabuk</th>
+									<th class="text-center">Madat</th>
+									<th class="text-center">Judi</th>
+									<th class="text-center">Meninggalkan Satu Pihak</th>
+									<th class="text-center">Penjara</th>
+									<th class="text-center">KD-RT</th>
+									<th class="text-center">Cacat</th>
+									<th class="text-center">Perselisihan</th>
+									<th class="text-center">Kawin Paksa</th>
+									<th class="text-center">Murtad</th>
+									<th class="text-center">Ekonomi</th>
+									<th class="text-center">Poligami</th>
+									<th class="text-center">Lain Lain</th>
+									<th class="text-center">Poligami Tak Sehat</th>
+									<th class="text-center">Krisis Akhlak</th>
+									<th class="text-center">Cemburu</th>
+									<th class="text-center">Tidak Tanggung Jawab</th>
+									<th class="text-center">Kawin Bawah Umur</th>
+									<th class="text-center">Dihukum</th>
+									<th class="text-center">Cacat Biologis</th>
+									<th class="text-center">Politis</th>
+									<th class="text-center">Pihak Ketiga</th>
+									<th class="text-center">Tidak Harmonis</th>
+									<th class="text-center">Kekejaman Jasmani</th>
+									<th class="text-center">Kekejaman Mental</th>
+									<th class="text-center">Jumlah Faktor Perceraian</th>
+								</tr>
+							</thead>
+		
+							<tbody>${rows}</tbody>
+		
+							<tfoot class="table-light">
+								<tr>
+									<th colspan="2" class="text-end pe-3">Total:</th>
+									${footerCols}
+									<th class="text-center">${totals.jumlah_faktor_perceraian}</th>
+								</tr>
+							</tfoot>
+		
+						</table>
+					</div>
+					`;
+
+					$('#tabelFaktorPerceraian').html(tableHtml);
+
+					$('#btnKembaliRekap').on('click', function () {
+						loadTabelFaktorPerceraian('401582', tahun);
+					});
+
+					// DataTables
+					const centerCols = Array.from(
+						{ length: faktor.length + 1 },
+						(_, i) => i + 2
+					);
+
+					$('#tabelFaktorPerceraianData').DataTable(
+						getDataTableConfigSAKIP({
+							columnDefs: [
+								{
+									targets: 0,
+									orderable: false,
+									searchable: false,
+									className: 'text-center'
+								},
+								{
+									targets: centerCols,
+									className: 'text-center'
+								}
+							]
+						})
+					);
+
+				} else {
+					$('#tabelFaktorPerceraian').html(
+						'<div class="alert alert-info">Data tidak ditemukan.</div>'
+					);
+				}
+
+			})
+			.fail(function (xhr, status, error) {
+
+				$('#tabelFaktorPerceraian').html(
+					'<div class="alert alert-danger">Terjadi kesalahan: ' + error + '</div>'
+				);
+
+			});
+	}
+
+	function loadTabelPerkaraTerima(kode, tahun) {
+		// Jika MS Aceh (tingkat banding), tampilkan ringkasan per satker dulu
+		if (kode === '401582') {
+			loadTabelRekapPerkaraTerima(kode, tahun);
+		} else {
+			// Untuk satker lain, load detail langsung (existing behavior)
+			loadDetailPerkaraTerimaBySatker(kode, tahun);
+		}
+	}
+
+	function loadTabelRekapPerkaraTerima(kode_satker, tahun) {
+		const jenis_perkara = [
+			'izin_poligami', 'pencegahan_perkawinan', 'penolakan_perkawinan', 'pembatalan_perkawinan', 'kelalaian_atas_kewajiban',
+			'ct', 'cg', 'harta_bersama', 'penguasaan_anak', 'nafkah_anak', 'hak_bekas_istri', 'pengangkatan_anak', 'pencabutan_ortu',
+			'perwalian', 'pencabutan_wali', 'penunjukan_wali', 'ganti_rugi_wali', 'asal_usul_anak', 'penolakan_kawin_campuran', 'istbat_nikah',
+			'izin_kawin', 'dispen_kawin', 'wali_adhol', 'kewarisan', 'wasiat', 'hibah', 'wakaf', 'zis', 'lainnya', 'esyar', 'paw', 'jumlah_perkara_terima'
+		];
+
+		$('#tabelPerkaraTerima').html('<div class="text-center py-5"><div class="spinner-border text-primary" role="status"></div></div>');
+
+		$.ajax({
+			url: 'get_tabel_perkara_terima',
+			type: 'POST',
+			data: { kode_satker: kode_satker, tahun: tahun },
+			dataType: 'json',
+			cache: false
+		})
+			.done(function (response) {
+				const res = response.data
+				if (res && res.length > 0) {
+					const rows = res.map((row, i) => {
+
+						const jenisCells = jenis_perkara
+							.map(col => `<td class="text-center">${row[col]}</td>`)
+							.join('');
+
+						return `
+						<tr class="satker-row" style="cursor:pointer"
+							data-kode-satker="${row.kode_satker}"
+							data-satker="${row.satker}">
+							<td class="text-center">${i + 1}</td>
+							<td><span class="fw-semibold">${row.satker}</span></td>
+							${jenisCells}
+						</tr>
+						`;
+					}).join('');
+
+					// hitung total
+					const totals = {};
+					jenis_perkara.forEach(col => totals[col] = 0);
+
+					res.forEach(r => {
+						jenis_perkara.forEach(col => {
+							totals[col] += Number(r[col] || 0);
+						});
+					});
+
+					const footerCells = jenis_perkara
+						.map(col => `<th class="text-center">${totals[col]}</th>`)
+						.join('');
+
+					const tableHtml = `
+						<div class="table-responsive">
+							<table id="tabelPerkaraTerimaData" class="table table-striped table-bordered table-hover align-middle" style="width:100%">
+								<thead class="table-dark">
+									<tr>
+										<th class="text-center" style="width:45px">No</th>
+										<th>Satuan Kerja</th>
+										<th class="text-center">Izin Poligami</th>
+										<th class="text-center">Pencegahan Perkawinan</th>
+										<th class="text-center">Penolakan Perkawinan Oleh PPN</th>
+										<th class="text-center">Pembatalan Perkawinan</th>
+										<th class="text-center">Kelalaian atas Kewajiban Suami/Isteri</th>
+										<th class="text-center">Cerai Talak</th>
+										<th class="text-center">Cerai Gugat</th>
+										<th class="text-center">Harta Bersama</th>
+										<th class="text-center">Penguasaan Anak</th>
+										<th class="text-center">Nafkah Anak Oleh Ibu</th>
+										<th class="text-center">Hak-hak bekas Isteri</th>
+										<th class="text-center">Pengesahan Anak/Pengangkatan anak</th>
+										<th class="text-center">Pencabutan Kekuasaan Orang Tua</th>
+										<th class="text-center">Perwalian</th>
+										<th class="text-center">Pencabutan Kekuasaan Wali</th>
+										<th class="text-center">Penunjukan Orang Lain Sbg Wali</th>
+										<th class="text-center">Ganti Rugi Thd Wali</th>
+										<th class="text-center">Asal Usul Anak</th>
+										<th class="text-center">Penolakan Kawin Campuran</th>
+										<th class="text-center">Istbat Nikah</th>
+										<th class="text-center">Izin Kawin</th>
+										<th class="text-center">Dispensasi Kawin</th>
+										<th class="text-center">Wali Adhol</th>
+										<th class="text-center">Kewarisan</th>
+										<th class="text-center">Wasiat</th>
+										<th class="text-center">Hibah</th>
+										<th class="text-center">Wakaf</th>
+										<th class="text-center">Zakat/Infaq/Shodaqoh</th>
+										<th class="text-center">Lain-lain</th>
+										<th class="text-center">Ekonomi Syariah</th>
+										<th class="text-center">P3HP/Penetapan Ahli Waris</th>
+										<th class="text-center">Jumlah Perkara Terima</th>
+									</tr>
+								</thead>
+								<tbody>${rows}</tbody>
+								<tfoot class="table-light">
+									<tr>
+										<th colspan="2" class="text-end pe-3">Total:</th>
+										${footerCells}
+									</tr>
+								</tfoot>
+							</table>
+						</div>
+						<small class="text-muted"><i class="bx bx-info-circle"></i> Klik pada nama satuan kerja untuk melihat detail statistik perkara diterima</small>
+					`;
+
+					$('#tabelPerkaraTerima').html(tableHtml);
+
+					const centerCols = Array.from({ length: jenis_perkara.length }, (_, i) => i + 2);
+
+					// Initialize DataTable
+					$('#tabelPerkaraTerimaData').DataTable(getDataTableConfigSatker({
+						columnDefs: [
+							{ targets: 0, orderable: false, searchable: false, className: 'text-center' },
+							{ targets: centerCols, className: 'text-center' }
+						]
+					}));
+
+					// Bind click event for table rows
+					$('#tabelPerkaraTerimaData').on('click', '.satker-row', function () {
+						const satkerKode = $(this).data('kode-satker');
+						const tahun_filter = document.getElementById('filter_tahun')?.value || null;
+						loadDetailPerkaraTerimaBySatker(satkerKode, tahun_filter);
+					});
+				} else {
+					$('#tabelPerkaraTerima').html('<div class="alert alert-info">Data tidak ditemukan.</div>');
+				}
+			})
+			.fail(function (xhr, status, error) {
+				$('#tabelPerkaraTerima').html('<div class="alert alert-danger">Terjadi kesalahan: ' + error + '</div>');
+			});
+	}
+
+	function loadDetailPerkaraTerimaBySatker(kode_satker, tahun) {
+
+		const jenis_perkara = [
+			'izin_poligami', 'pencegahan_perkawinan', 'penolakan_perkawinan', 'pembatalan_perkawinan', 'kelalaian_atas_kewajiban',
+			'ct', 'cg', 'harta_bersama', 'penguasaan_anak', 'nafkah_anak', 'hak_bekas_istri', 'pengangkatan_anak', 'pencabutan_ortu',
+			'perwalian', 'pencabutan_wali', 'penunjukan_wali', 'ganti_rugi_wali', 'asal_usul_anak', 'penolakan_kawin_campuran', 'istbat_nikah',
+			'izin_kawin', 'dispen_kawin', 'wali_adhol', 'kewarisan', 'wasiat', 'hibah', 'wakaf', 'zis', 'lainnya', 'esyar', 'paw'
+		];
+
+		const allCols = [...jenis_perkara, 'jumlah_perkara_terima'];
+
+		$('#tabelPerkaraTerima').html(
+			'<div class="text-center py-5"><div class="spinner-border text-primary"></div></div>'
+		);
+
+		$.ajax({
+			url: 'get_tabel_perkara_terima_satker',
+			type: 'POST',
+			data: { kode_satker: kode_satker, tahun: tahun },
+			dataType: 'json',
+			cache: false
+		})
+			.done(function (response) {
+
+				const res = response.data;
+
+				if (res && res.length > 0) {
+
+					// Generate rows
+					const rows = res.map((row, i) => {
+
+						const cols = jenis_perkara.map(f =>
+							`<td class="text-center">${row[f]}</td>`
+						).join('');
+
+						return `
+					<tr>
+						<td class="text-center">${i + 1}</td>
+						<td><span class="fw-semibold">${row.bulan}</span></td>
+						${cols}
+						<td class="text-center">${row.jumlah_perkara_terima}</td>
+					</tr>
+					`;
+
+					}).join('');
+
+					// Hitung total
+					const totals = {};
+
+					allCols.forEach(f => totals[f] = 0);
+
+					res.forEach(r => {
+						allCols.forEach(f => {
+							totals[f] += Number(r[f] || 0);
+						});
+					});
+
+					const footerCols = jenis_perkara.map(f =>
+						`<th class="text-center">${totals[f]}</th>`
+					).join('');
+
+					const tableHtml = `
+					<div class="mb-2">
+						<button id="btnKembaliRekapPerkaraTerima" class="btn btn-sm btn-outline-primary">
+							<i class="bx bx-arrow-back me-1"></i> Kembali ke Rekapitulasi
+						</button>
+					</div>
+		
+					<div class="mb-2">
+						<small class="text-muted">
+							<i class="bx bx-info-circle"></i>
+							Data Rekapitulasi Perkara Diterima
+						</small>
+					</div>
+		
+					<div class="table-responsive">
+		
+						<table id="tabelPerkaraTerimaData"
+							class="table table-striped table-bordered table-hover align-middle"
+							style="width:100%">
+		
+							<thead class="table-dark">
+								<tr>
+									<th class="text-center" style="width:45px">No</th>
+									<th>Satuan Kerja</th>
+									<th class="text-center">Izin Poligami</th>
+									<th class="text-center">Pencegahan Perkawinan</th>
+									<th class="text-center">Penolakan Perkawinan Oleh PPN</th>
+									<th class="text-center">Pembatalan Perkawinan</th>
+									<th class="text-center">Kelalaian atas Kewajiban Suami/Isteri</th>
+									<th class="text-center">Cerai Talak</th>
+									<th class="text-center">Cerai Gugat</th>
+									<th class="text-center">Harta Bersama</th>
+									<th class="text-center">Penguasaan Anak</th>
+									<th class="text-center">Nafkah Anak Oleh Ibu</th>
+									<th class="text-center">Hak-hak bekas Isteri</th>
+									<th class="text-center">Pengesahan Anak/Pengangkatan anak</th>
+									<th class="text-center">Pencabutan Kekuasaan Orang Tua</th>
+									<th class="text-center">Perwalian</th>
+									<th class="text-center">Pencabutan Kekuasaan Wali</th>
+									<th class="text-center">Penunjukan Orang Lain Sbg Wali</th>
+									<th class="text-center">Ganti Rugi Thd Wali</th>
+									<th class="text-center">Asal Usul Anak</th>
+									<th class="text-center">Penolakan Kawin Campuran</th>
+									<th class="text-center">Istbat Nikah</th>
+									<th class="text-center">Izin Kawin</th>
+									<th class="text-center">Dispensasi Kawin</th>
+									<th class="text-center">Wali Adhol</th>
+									<th class="text-center">Kewarisan</th>
+									<th class="text-center">Wasiat</th>
+									<th class="text-center">Hibah</th>
+									<th class="text-center">Wakaf</th>
+									<th class="text-center">Zakat/Infaq/Shodaqoh</th>
+									<th class="text-center">Lain-lain</th>
+									<th class="text-center">Ekonomi Syariah</th>
+									<th class="text-center">P3HP/Penetapan Ahli Waris</th>
+									<th class="text-center">Jumlah Perkara Terima</th>
+								</tr>
+							</thead>
+		
+							<tbody>${rows}</tbody>
+		
+							<tfoot class="table-light">
+								<tr>
+									<th colspan="2" class="text-end pe-3">Total:</th>
+									${footerCols}
+									<th class="text-center">${totals.jumlah_perkara_terima}</th>
+								</tr>
+							</tfoot>
+		
+						</table>
+					</div>
+					`;
+
+					$('#tabelPerkaraTerima').html(tableHtml);
+
+					$('#btnKembaliRekapPerkaraTerima').on('click', function () {
+						loadTabelPerkaraTerima('401582', tahun);
+					});
+
+					// DataTables
+					const centerCols = Array.from(
+						{ length: jenis_perkara.length + 1 },
+						(_, i) => i + 2
+					);
+
+					$('#tabelPerkaraTerimaData').DataTable(
+						getDataTableConfigSAKIP({
+							columnDefs: [
+								{
+									targets: 0,
+									orderable: false,
+									searchable: false,
+									className: 'text-center'
+								},
+								{
+									targets: centerCols,
+									className: 'text-center'
+								}
+							]
+						})
+					);
+
+				} else {
+					$('#tabelPerkaraTerima').html(
+						'<div class="alert alert-info">Data tidak ditemukan.</div>'
+					);
+				}
+
+			})
+			.fail(function (xhr, status, error) {
+
+				$('#tabelPerkaraTerima').html(
+					'<div class="alert alert-danger">Terjadi kesalahan: ' + error + '</div>'
+				);
+
+			});
+	}
 	// ============================================
 	// EVENT HANDLERS
 	// ============================================

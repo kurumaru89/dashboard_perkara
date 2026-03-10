@@ -12,6 +12,7 @@ class HalamanUtama extends CI_Controller
     {
         $data['kode'] = '401582';
         $data['satker'] = $this->model->get_seleksi_array('dim_satker', '', ['kode_satker' => 'ASC'])->result();
+        $data['tahun_perkara'] = $this->model->get_tahun();
         $this->load->view('dashboard', $data);
     }
 
@@ -631,5 +632,83 @@ class HalamanUtama extends CI_Controller
 
         header('Content-Type: application/json');
         echo json_encode($result);
+    }
+
+    public function get_tabel_faktor_perceraian()
+    {
+        $kode_satker = $this->input->post('kode_satker');
+        $tahun = $this->input->post('tahun');
+
+        $faktor_cerai = $this->model->get_tabel_faktor_perceraian($kode_satker, $tahun);
+
+        echo json_encode(['data' => $faktor_cerai]);
+    }
+
+    public function get_tabel_faktor_perceraian_satker()
+    {
+        $kode_satker = $this->input->post('kode_satker');
+        $tahun = $this->input->post('tahun');
+
+        $faktor_cerai = $this->model->get_tabel_faktor_perceraian_satker($kode_satker, $tahun);
+        
+        $nama_bulan = [
+            1 => 'Januari',
+            2 => 'Februari',
+            3 => 'Maret',
+            4 => 'April',
+            5 => 'Mei',
+            6 => 'Juni',
+            7 => 'Juli',
+            8 => 'Agustus',
+            9 => 'September',
+            10 => 'Oktober',
+            11 => 'November',
+            12 => 'Desember'
+        ];
+
+        foreach ($faktor_cerai as $row) {
+            $row->bulan = $nama_bulan[(int)$row->bulan];
+        }
+
+        echo json_encode(['data' => $faktor_cerai]);
+    }
+
+    public function get_tabel_perkara_terima()
+    {
+        $kode_satker = $this->input->post('kode_satker');
+        $tahun = $this->input->post('tahun');
+
+        $perkara_terima = $this->model->get_tabel_perkara_terima($kode_satker, $tahun);
+
+        echo json_encode(['data' => $perkara_terima]);
+    }
+
+    public function get_tabel_perkara_terima_satker()
+    {
+        $kode_satker = $this->input->post('kode_satker');
+        $tahun = $this->input->post('tahun');
+
+        $perkara_terima = $this->model->get_tabel_perkara_terima_satker($kode_satker, $tahun);
+        
+        $nama_bulan = [
+            1 => 'Januari',
+            2 => 'Februari',
+            3 => 'Maret',
+            4 => 'April',
+            5 => 'Mei',
+            6 => 'Juni',
+            7 => 'Juli',
+            8 => 'Agustus',
+            9 => 'September',
+            10 => 'Oktober',
+            11 => 'November',
+            12 => 'Desember'
+        ];
+
+        foreach ($perkara_terima as $row) {
+            $row->bulan = $nama_bulan[(int)$row->bulan];
+        }
+
+        echo json_encode(['data' => $perkara_terima]);
     }
 }
