@@ -348,6 +348,7 @@
                     </div>
                 </div>
 
+                <!--
                 <div class="row">
                     <div class="col-12">
                         <div class="card card-collapsible">
@@ -371,6 +372,7 @@
                         </div>
                     </div>
                 </div>
+                -->
 
                 <!-- NEW: Perkara Banding Section -->
                 <div class="row">
