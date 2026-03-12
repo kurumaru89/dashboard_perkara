@@ -278,6 +278,7 @@
                     </div>
                 </div>
 
+                <!--
                 <div class="row">
                     <div class="col-12">
                         <div class="card card-collapsible">
@@ -298,6 +299,7 @@
                         </div>
                     </div>
                 </div>
+                -->
 
                 <div class="row">
                     <div class="col-12">
