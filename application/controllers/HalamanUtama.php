@@ -634,6 +634,189 @@ class HalamanUtama extends CI_Controller
         echo json_encode($result);
     }
 
+    // ============================================
+    // HAKIM WORKLOAD ENDPOINTS
+    // ============================================
+
+    /**
+     * Get Hakim Workload Summary (KPI Cards)
+     */
+    public function get_hakim_workload_summary()
+    {
+        $kode_satker = $this->input->get('kode_satker', true);
+        $filter_tahun = $this->input->get('filter_tahun', true);
+        $tgl_awal = $this->input->get('tgl_awal', true);
+        $tgl_akhir = $this->input->get('tgl_akhir', true);
+
+        $data = $this->model->get_hakim_workload_summary($kode_satker, $filter_tahun, $tgl_awal, $tgl_akhir);
+
+        header('Content-Type: application/json');
+        echo json_encode([
+            'total_hakim' => (int) $data->total_hakim,
+            'total_perkara' => (int) $data->total_perkara,
+            'avg_workload' => (int) $data->avg_workload,
+            'max_workload' => (int) $data->max_workload,
+            'min_workload' => (int) $data->min_workload,
+            'total_diputus' => (int) $data->total_diputus,
+            'total_aktif' => (int) $data->total_aktif,
+            'avg_completion_rate' => (float) $data->avg_completion_rate
+        ]);
+    }
+
+    /**
+     * Get Hakim Workload List (for DataTable)
+     */
+    public function get_hakim_workload_list()
+    {
+        $kode_satker = $this->input->get('kode_satker', true);
+        $filter_tahun = $this->input->get('filter_tahun', true);
+        $tgl_awal = $this->input->get('tgl_awal', true);
+        $tgl_akhir = $this->input->get('tgl_akhir', true);
+
+        $data = $this->model->get_hakim_workload_list($kode_satker, null, $filter_tahun, $tgl_awal, $tgl_akhir);
+
+        $result = [];
+        foreach ($data as $row) {
+            $result[] = [
+                'hakim_id' => $row->hakim_id,
+                'hakim_nama' => $row->hakim_nama,
+                'hakim_nip' => $row->hakim_nip,
+                'pangkat' => $row->pangkat,
+                'jabatan' => $row->jabatan,
+                'total_perkara' => (int) $row->total_perkara,
+                'sebagai_ketua' => (int) $row->sebagai_ketua,
+                'sebagai_anggota' => (int) $row->sebagai_anggota,
+                'sebagai_tunggal' => (int) $row->sebagai_tunggal,
+                'perkara_diputus' => (int) $row->perkara_diputus,
+                'perkara_aktif' => (int) $row->perkara_aktif,
+                'completion_rate' => (float) $row->completion_rate,
+                'avg_hari_penyelesaian' => (int) $row->avg_hari_penyelesaian,
+                'penetapan_pertama' => $row->penetapan_pertama,
+                'penetapan_terakhir' => $row->penetapan_terakhir,
+                'nama_satker' => $row->nama_satker
+            ];
+        }
+
+        header('Content-Type: application/json');
+        echo json_encode(['data' => $result]);
+    }
+
+    /**
+     * Get Hakim Workload Distribution (for Pie Chart)
+     */
+    public function get_hakim_workload_distribution()
+    {
+        $kode_satker = $this->input->get('kode_satker', true);
+        $filter_tahun = $this->input->get('filter_tahun', true);
+        $tgl_awal = $this->input->get('tgl_awal', true);
+        $tgl_akhir = $this->input->get('tgl_akhir', true);
+
+        $data = $this->model->get_hakim_workload_list($kode_satker, null, $filter_tahun, $tgl_awal, $tgl_akhir);
+
+        // Calculate distribution
+        $distribution = [
+            '0-100' => ['hakim' => 0, 'perkara' => 0],
+            '100-299' => ['hakim' => 0, 'perkara' => 0],
+            '300-499' => ['hakim' => 0, 'perkara' => 0],
+            '500-799' => ['hakim' => 0, 'perkara' => 0],
+            '800+' => ['hakim' => 0, 'perkara' => 0]
+        ];
+
+        foreach ($data as $row) {
+            $total = $row->total_perkara;
+            if ($total < 100) {
+                $key = '0-100';
+            } elseif ($total <= 299) {
+                $key = '100-299';
+            } elseif ($total <= 499) {
+                $key = '300-499';
+            } elseif ($total <= 799) {
+                $key = '500-799';
+            } else {
+                $key = '800+';
+            }
+
+            $distribution[$key]['hakim']++;
+            $distribution[$key]['perkara'] += $total;
+        }
+
+        $labels = [];
+        $values = [];
+        $counts = [];
+
+        foreach ($distribution as $range => $stats) {
+            $labels[] = $range . ' Perkara';
+            $values[] = $stats['hakim'];
+            $counts[] = $stats['perkara'];
+        }
+
+        header('Content-Type: application/json');
+        echo json_encode([
+            'labels' => $labels,
+            'jumlah_hakim' => $values,
+            'total_perkara' => $counts
+        ]);
+    }
+
+    /**
+     * Get Hakim Workload Top/Bottom (for Bar Chart)
+     */
+    public function get_hakim_workload_top()
+    {
+        $kode_satker = $this->input->get('kode_satker', true);
+        $filter_tahun = $this->input->get('filter_tahun', true);
+        $tgl_awal = $this->input->get('tgl_awal', true);
+        $tgl_akhir = $this->input->get('tgl_akhir', true);
+
+        $data = $this->model->get_hakim_workload_list($kode_satker, 15, $filter_tahun, $tgl_awal, $tgl_akhir);
+
+        $top_hakim = [];
+        foreach ($data as $row) {
+            $top_hakim[] = [
+                'nama' => strlen($row->hakim_nama) > 20 ? substr($row->hakim_nama, 0, 20) . '...' : $row->hakim_nama,
+                'nama_full' => $row->hakim_nama,
+                'total_perkara' => (int) $row->total_perkara,
+                'sebagai_ketua' => (int) $row->sebagai_ketua,
+                'sebagai_anggota' => (int) $row->sebagai_anggota
+            ];
+        }
+
+        header('Content-Type: application/json');
+        echo json_encode($top_hakim);
+    }
+
+    /**
+     * Get Hakim Workload Trend (for Line Chart)
+     */
+    public function get_hakim_workload_trend()
+    {
+        $kode_satker = $this->input->get('kode_satker', true);
+        $data = $this->model->get_hakim_workload_trend($kode_satker);
+
+        $periode = [];
+        $total_perkara = [];
+        $jumlah_hakim = [];
+        $avg_per_hakim = [];
+
+        // Reverse to get chronological order
+        $data = array_reverse($data);
+
+        foreach ($data as $row) {
+            $periode[] = $row->periode_bulan;
+            $total_perkara[] = (int) $row->total_perkara;
+            $jumlah_hakim[] = (int) $row->jumlah_hakim;
+            $avg_per_hakim[] = (int) $row->avg_per_hakim;
+        }
+
+        header('Content-Type: application/json');
+        echo json_encode([
+            'periode' => $periode,
+            'total_perkara' => $total_perkara,
+            'jumlah_hakim' => $jumlah_hakim,
+            'avg_per_hakim' => $avg_per_hakim
+        ]);
+    }
+
     public function get_tabel_faktor_perceraian()
     {
         $kode_satker = $this->input->post('kode_satker');
@@ -650,7 +833,7 @@ class HalamanUtama extends CI_Controller
         $tahun = $this->input->post('tahun');
 
         $faktor_cerai = $this->model->get_tabel_faktor_perceraian_satker($kode_satker, $tahun);
-        
+
         $nama_bulan = [
             1 => 'Januari',
             2 => 'Februari',
@@ -689,7 +872,7 @@ class HalamanUtama extends CI_Controller
         $tahun = $this->input->post('tahun');
 
         $perkara_terima = $this->model->get_tabel_perkara_terima_satker($kode_satker, $tahun);
-        
+
         $nama_bulan = [
             1 => 'Januari',
             2 => 'Februari',

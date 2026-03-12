@@ -435,6 +435,117 @@
                         </div>
                     </div>
                 </div>
+
+                <!-- NEW: Hakim Workload Section -->
+                <div class="row">
+                    <div class="col-12">
+                        <div class="card card-collapsible">
+                            <div class="card-header d-flex justify-content-between align-items-center">
+                                <span><i class="bx bx-user me-2"></i> Analisis Workload Hakim</span>
+                                <button class="btn btn-sm btn-light btn-collapse" type="button"
+                                    data-bs-toggle="collapse" data-bs-target="#bodyHakimWorkload" aria-expanded="true"
+                                    aria-label="Toggle Hakim Workload">
+                                    <i class="bx bx-chevron-up"></i>
+                                </button>
+                            </div>
+                            <div id="bodyHakimWorkload" class="collapse show">
+                                <div class="card-body">
+                                    <!-- KPI Cards -->
+                                    <div class="row mb-4">
+                                        <div class="col-lg-3 col-md-6">
+                                            <div class="card bg-primary text-white">
+                                                <div class="card-body">
+                                                    <h6 class="card-title mb-1">Total Hakim</h6>
+                                                    <h3 class="mb-0" id="totalHakim">-</h3>
+                                                    <small>Hakim Aktif</small>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="col-lg-3 col-md-6">
+                                            <div class="card bg-info text-white">
+                                                <div class="card-body">
+                                                    <h6 class="card-title mb-1">Rata-rata Workload</h6>
+                                                    <h3 class="mb-0" id="avgWorkload">-</h3>
+                                                    <small>Perkara per Hakim</small>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="col-lg-3 col-md-6">
+                                            <div class="card bg-warning text-white">
+                                                <div class="card-body">
+                                                    <h6 class="card-title mb-1">Workload Tertinggi</h6>
+                                                    <h3 class="mb-0" id="maxWorkload">-</h3>
+                                                    <small>Perkara</small>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="col-lg-3 col-md-6">
+                                            <div class="card bg-success text-white">
+                                                <div class="card-body">
+                                                    <h6 class="card-title mb-1">Completion Rate</h6>
+                                                    <h3 class="mb-0" id="avgCompletionRate">-</h3>
+                                                    <small>Rata-rata</small>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <!-- Charts Row -->
+                                    <div class="row mb-4">
+                                        <div class="col-lg-4 col-md-12">
+                                            <div class="card">
+                                                <div class="card-header">
+                                                    <h6 class="card-title">Distribusi Workload</h6>
+                                                </div>
+                                                <div class="card-body">
+                                                    <div id="chartHakimDistribution"></div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="col-lg-8 col-md-12">
+                                            <div class="card">
+                                                <div class="card-header">
+                                                    <h6 class="card-title">Top 15 Hakim by Workload</h6>
+                                                </div>
+                                                <div class="card-body">
+                                                    <div id="chartHakimTop"></div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <!-- Table -->
+                                    <div class="row">
+                                        <div class="col-12">
+                                            <div class="card">
+                                                <div class="card-header">
+                                                    <h6 class="card-title">Detail Workload per Hakim</h6>
+                                                </div>
+                                                <div class="card-body">
+                                                    <table id="tableHakimWorkload" class="table table-striped table-bordered w-100">
+                                                        <thead>
+                                                            <tr>
+                                                                <th>No</th>
+                                                                <th>Nama Hakim</th>
+                                                                <th>NIP</th>
+                                                                <th>Total Perkara</th>
+                                                                <th>Ketua</th>
+                                                                <th>Anggota</th>
+                                                                <th>Completion Rate</th>
+                                                                <th>Avg Durasi</th>
+                                                            </tr>
+                                                        </thead>
+                                                        <tbody></tbody>
+                                                    </table>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
 
@@ -469,11 +580,27 @@
     <script src="assets/plugins/sweetalert2/sweetalert2.all.min.js"></script>
 
     <!--app JS-->
-    <script src="assets/js/app.js"></script>
+    <script src="assets/js/app.js?v=1.0.2"></script>
     <script>
         $(document).ready(function () {
             loadChartBebanKerja();
             loadDashboardPerkara('<?= $kode ?>');
+            // loadHakimWorkload sudah dipanggil di dalam loadDashboardPerkara
+
+            // Event listener untuk filter tahun
+            $('#filter_tahun').on('change', function() {
+                const satker = $('#satker').val() || '<?= $kode ?>';
+                loadDashboardPerkara(satker);
+                // loadHakimWorkload sudah dipanggil di dalam loadDashboardPerkara
+            });
+
+            // Event listener untuk satker select
+            $('.satker-select').on('change', function() {
+                const satker = $(this).val();
+                if (satker) {
+                    loadDashboardPerkara(satker);
+                }
+            });
         });
 
         $('.satker-select').select2({
@@ -518,6 +645,10 @@
 
                     document.getElementById('tgl_awal').value = formatDate(start);
                     document.getElementById('tgl_akhir').value = formatDate(end);
+
+                    // Refresh dashboard dan hakim workload setelah tanggal dipilih
+                    const satker = $('#satker').val() || '<?= $kode ?>';
+                    loadDashboardPerkara(satker);
                 }
             }
         });

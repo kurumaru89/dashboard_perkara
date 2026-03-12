@@ -1200,4 +1200,277 @@ class Model extends CI_Model
 
         return $this->db->query($sql)->result();
     }
+
+    // ============================================
+    // HAKIM WORKLOAD METHODS
+    // ============================================
+
+    /**
+     * Get Summary Statistics for Hakim Workload
+     */
+    public function get_hakim_workload_summary($kode_satker = null, $filter_tahun = null, $tgl_awal = null, $tgl_akhir = null)
+    {
+        // Tentukan tahun berdasarkan filter atau tahun berjalan
+        $tahun_filter = (!empty($filter_tahun)) ? $filter_tahun : date('Y');
+        $use_date_range = (!empty($tgl_awal) && !empty($tgl_akhir));
+
+        // Get latest periode_bulan available in fact_hakim_workload
+        $latest_period_query = $this->db->query("
+            SELECT COALESCE(MAX(periode_bulan), DATE_FORMAT(CURDATE(), '%Y-%m')) as latest_period
+            FROM fact_hakim_workload
+            WHERE kode_satker <> '401582'
+        ")->row();
+        $latest_period = $latest_period_query->latest_period;
+
+        // Untuk multi-satker view, gunakan data fact_hakim_workload (all-time, no filter)
+        if (empty($kode_satker) || $kode_satker === '401582') {
+            $this->db->select("
+                COUNT(DISTINCT CASE WHEN f.kode_satker <> '401582' THEN f.hakim_id END) as total_hakim,
+                SUM(CASE WHEN f.kode_satker <> '401582' THEN f.total_perkara ELSE 0 END) as total_perkara,
+                ROUND(AVG(CASE WHEN f.kode_satker <> '401582' THEN f.total_perkara ELSE NULL END), 0) as avg_workload,
+                ROUND(MAX(CASE WHEN f.kode_satker <> '401582' THEN f.total_perkara ELSE 0 END), 0) as max_workload,
+                ROUND(MIN(CASE WHEN f.kode_satker <> '401582' THEN f.total_perkara ELSE 999999 END), 0) as min_workload,
+                SUM(CASE WHEN f.kode_satker <> '401582' THEN f.perkara_diputus ELSE 0 END) as total_diputus,
+                SUM(CASE WHEN f.kode_satker <> '401582' THEN f.perkara_aktif ELSE 0 END) as total_aktif,
+                ROUND(AVG(CASE WHEN f.kode_satker <> '401582' THEN f.completion_rate ELSE NULL END), 2) as avg_completion_rate
+            ", false);
+
+            $this->db->from('fact_hakim_workload f');
+            $this->db->where('f.periode_bulan', $latest_period);
+
+            return $this->db->get()->row();
+        }
+
+        // Untuk single satker, query dinamis dari SIPP dengan filter
+        $source_db = 'sipp_' . $kode_satker;
+
+        $sql = "
+            SELECT
+                COUNT(DISTINCT hakim_id) as total_hakim,
+                SUM(perkara_count) as total_perkara,
+                ROUND(AVG(perkara_count), 0) as avg_workload,
+                ROUND(MAX(perkara_count), 0) as max_workload,
+                ROUND(MIN(perkara_count), 0) as min_workload,
+                SUM(perkara_diputus) as total_diputus,
+                SUM(perkara_aktif) as total_aktif,
+                ROUND(AVG(completion_rate), 2) as avg_completion_rate
+            FROM (
+                SELECT
+                    php.hakim_id,
+                    COUNT(DISTINCT php.perkara_id) as perkara_count,
+                    SUM(CASE WHEN pp.tanggal_putusan IS NOT NULL THEN 1 ELSE 0 END) as perkara_diputus,
+                    SUM(CASE WHEN pp.tanggal_putusan IS NULL THEN 1 ELSE 0 END) as perkara_aktif,
+                    ROUND(SUM(CASE WHEN pp.tanggal_putusan IS NOT NULL THEN 1 ELSE 0 END) * 100.0 / NULLIF(COUNT(DISTINCT php.perkara_id), 0), 2) as completion_rate
+                FROM {$source_db}.perkara_hakim_pn php
+                INNER JOIN {$source_db}.perkara p ON p.perkara_id = php.perkara_id
+                LEFT JOIN {$source_db}.perkara_putusan pp ON pp.perkara_id = php.perkara_id
+                WHERE php.aktif = 'Y' AND php.hakim_id IS NOT NULL
+        ";
+
+        // Apply date filter
+        if ($use_date_range) {
+            $sql .= " AND p.tanggal_pendaftaran BETWEEN " . $this->db->escape($tgl_awal) . " AND " . $this->db->escape($tgl_akhir);
+        } else {
+            $sql .= " AND YEAR(p.tanggal_pendaftaran) = " . intval($tahun_filter);
+        }
+
+        $sql .= " GROUP BY php.hakim_id
+        ) as summary";
+
+        return $this->db->query($sql)->row();
+    }
+
+    /**
+     * Get Hakim Workload List (for table)
+     */
+    public function get_hakim_workload_list($kode_satker = null, $limit = null, $filter_tahun = null, $tgl_awal = null, $tgl_akhir = null)
+    {
+        $tahun_filter = (!empty($filter_tahun)) ? $filter_tahun : date('Y');
+        $use_date_range = (!empty($tgl_awal) && !empty($tgl_akhir));
+
+        // Untuk multi-satker view, gunakan data fact_hakim_workload (latest month available)
+        if (empty($kode_satker) || $kode_satker === '401582') {
+            // Get latest periode_bulan available in fact_hakim_workload
+            $latest_period_query = $this->db->query("
+                SELECT COALESCE(MAX(periode_bulan), DATE_FORMAT(CURDATE(), '%Y-%m')) as latest_period
+                FROM fact_hakim_workload
+                WHERE kode_satker <> '401582'
+            ")->row();
+            $latest_period = $latest_period_query->latest_period;
+
+            $this->db->select("
+                h.id as hakim_id,
+                h.nama as hakim_nama,
+                h.nip as hakim_nip,
+                h.pangkat,
+                h.jabatan,
+                f.total_perkara,
+                f.sebagai_ketua,
+                f.sebagai_anggota,
+                f.sebagai_tunggal,
+                f.perkara_diputus,
+                f.perkara_aktif,
+                f.completion_rate,
+                f.avg_hari_penyelesaian,
+                f.penetapan_pertama,
+                f.penetapan_terakhir,
+                s.nama_satker
+            ", false);
+
+            $this->db->from('fact_hakim_workload f');
+            $this->db->join('dim_hakim h', 'h.id = f.hakim_id');
+            $this->db->join('dim_satker s', 's.kode_satker = f.kode_satker', 'left');
+            $this->db->where('f.kode_satker <>', '401582');
+            $this->db->where('f.periode_bulan', $latest_period);
+            $this->db->order_by('f.total_perkara', 'DESC');
+
+            if ($limit) {
+                $this->db->limit($limit);
+            }
+
+            return $this->db->get()->result();
+        }
+
+        // Untuk single satker, query dinamis dari SIPP dengan filter
+        $source_db = 'sipp_' . $kode_satker;
+
+        $sql = "
+            SELECT
+                h.id as hakim_id,
+                h.nama as hakim_nama,
+                h.nip as hakim_nip,
+                h.pangkat,
+                h.jabatan,
+                summary.perkara_count as total_perkara,
+                summary.sebagai_ketua,
+                summary.sebagai_anggota,
+                summary.sebagai_tunggal,
+                summary.perkara_diputus,
+                summary.perkara_aktif,
+                summary.completion_rate,
+                summary.avg_hari_penyelesaian,
+                summary.penetapan_pertama,
+                summary.penetapan_terakhir,
+                '{$kode_satker}' as kode_satker,
+                (SELECT nama_satker FROM dim_satker WHERE kode_satker = '{$kode_satker}') as nama_satker
+            FROM (
+                SELECT
+                    php.hakim_id,
+                    COUNT(DISTINCT php.perkara_id) as perkara_count,
+                    SUM(CASE WHEN php.jabatan_hakim_id = 1 THEN 1 ELSE 0 END) sebagai_ketua,
+                    SUM(CASE WHEN php.jabatan_hakim_id = 2 THEN 1 ELSE 0 END) sebagai_anggota,
+                    SUM(CASE WHEN php.jabatan_hakim_id = 3 THEN 1 ELSE 0 END) sebagai_tunggal,
+                    SUM(CASE WHEN pp.tanggal_putusan IS NOT NULL THEN 1 ELSE 0 END) as perkara_diputus,
+                    SUM(CASE WHEN pp.tanggal_putusan IS NULL THEN 1 ELSE 0 END) as perkara_aktif,
+                    ROUND(SUM(CASE WHEN pp.tanggal_putusan IS NOT NULL THEN 1 ELSE 0 END) * 100.0 / NULLIF(COUNT(DISTINCT php.perkara_id), 0), 2) as completion_rate,
+                    ROUND(AVG(DATEDIFF(COALESCE(pp.tanggal_putusan, CURDATE()), p.tanggal_pendaftaran))) as avg_hari_penyelesaian,
+                    MIN(php.tanggal_penetapan) as penetapan_pertama,
+                    MAX(php.tanggal_penetapan) as penetapan_terakhir
+                FROM {$source_db}.perkara_hakim_pn php
+                INNER JOIN {$source_db}.hakim_pn h ON h.id = php.hakim_id
+                INNER JOIN {$source_db}.perkara p ON p.perkara_id = php.perkara_id
+                LEFT JOIN {$source_db}.perkara_putusan pp ON pp.perkara_id = php.perkara_id
+                WHERE php.aktif = 'Y' AND php.hakim_id IS NOT NULL
+        ";
+
+        // Apply date filter
+        if ($use_date_range) {
+            $sql .= " AND p.tanggal_pendaftaran BETWEEN " . $this->db->escape($tgl_awal) . " AND " . $this->db->escape($tgl_akhir);
+        } else {
+            $sql .= " AND YEAR(p.tanggal_pendaftaran) = " . intval($tahun_filter);
+        }
+
+        $sql .= " GROUP BY php.hakim_id
+        ) as summary
+        INNER JOIN {$source_db}.hakim_pn h ON h.id = summary.hakim_id
+        ORDER BY summary.perkara_count DESC";
+
+        if ($limit) {
+            $sql .= " LIMIT " . intval($limit);
+        }
+
+        return $this->db->query($sql)->result();
+    }
+
+    /**
+     * Get Workload Distribution (for pie chart)
+     */
+    public function get_hakim_workload_distribution($kode_satker = null, $filter_tahun = null, $tgl_awal = null, $tgl_akhir = null)
+    {
+        // Get latest periode_bulan available in fact_hakim_workload
+        $latest_period_query = $this->db->query("
+            SELECT COALESCE(MAX(periode_bulan), DATE_FORMAT(CURDATE(), '%Y-%m')) as latest_period
+            FROM fact_hakim_workload
+            WHERE kode_satker <> '401582'
+        ")->row();
+        $latest_period = $latest_period_query->latest_period;
+
+        $sql = "
+            SELECT
+                CASE
+                    WHEN total_perkara < 100 THEN '0-100'
+                    WHEN total_perkara BETWEEN 100 AND 299 THEN '100-299'
+                    WHEN total_perkara BETWEEN 300 AND 499 THEN '300-499'
+                    WHEN total_perkara BETWEEN 500 AND 799 THEN '500-799'
+                    WHEN total_perkara >= 800 THEN '800+'
+                END as range_perkara,
+                COUNT(*) as jumlah_hakim,
+                SUM(total_perkara) as total_perkara
+            FROM fact_hakim_workload
+            WHERE periode_bulan = " . $this->db->escape($latest_period) . "
+        ";
+
+        if (!empty($kode_satker)) {
+            $sql .= " AND kode_satker = " . $this->db->escape($kode_satker);
+        } else {
+            $sql .= " AND kode_satker <> '401582'";
+        }
+
+        $sql .= " GROUP BY range_perkara ORDER BY MIN(total_perkara)";
+
+        return $this->db->query($sql)->result();
+    }
+
+    /**
+     * Get Top/Bottom Hakim by Workload
+     */
+    public function get_hakim_workload_top_bottom($kode_satker = null, $top = 10, $bottom = 5, $filter_tahun = null, $tgl_awal = null, $tgl_akhir = null)
+    {
+        $all_results = $this->get_hakim_workload_list($kode_satker, null, $filter_tahun, $tgl_awal, $tgl_akhir);
+
+        $top_hakim = array_slice($all_results, 0, $top);
+        $bottom_hakim = array_slice($all_results, -$bottom);
+
+        return [
+            'top' => $top_hakim,
+            'bottom' => array_reverse($bottom_hakim)
+        ];
+    }
+
+    /**
+     * Get Annual Trend for Hakim Workload
+     */
+    public function get_hakim_workload_trend($kode_satker = null)
+    {
+        $this->db->select("
+            periode_bulan,
+            SUM(total_perkara) as total_perkara,
+            COUNT(DISTINCT hakim_id) as jumlah_hakim,
+            ROUND(SUM(total_perkara) / COUNT(DISTINCT hakim_id), 0) as avg_per_hakim
+        ", false);
+
+        $this->db->from('fact_hakim_workload');
+
+        if (!empty($kode_satker)) {
+            $this->db->where('kode_satker', $kode_satker);
+        } else {
+            $this->db->where('kode_satker <>', '401582');
+        }
+
+        $this->db->group_by('periode_bulan');
+        $this->db->order_by('periode_bulan', 'DESC');
+        $this->db->limit(12); // Last 12 periods
+
+        return $this->db->get()->result();
+    }
 }

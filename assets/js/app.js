@@ -488,6 +488,7 @@
 			loadDashboardSAKIP(satker);
 		} else if (satker) {
 			loadDashboardPerkara(satker);
+			// loadHakimWorkload sudah dipanggil di dalam loadDashboardPerkara
 		}
 	}
 
@@ -661,6 +662,10 @@
 			}
 
 			await Promise.all(requests);
+
+			// Load hakim workload setelah dashboard utama selesai
+			loadHakimWorkload(kode);
+
 			notifikasi("Menampilkan data satuan kerja", 1);
 		} catch (err) {
 			console.error("Dashboard Error:", err);
@@ -2362,41 +2367,41 @@
 					</tr>
 				`).join('');
 
-					const tableHtml = `
-						<div class="mb-2">
-							<button class="btn btn-sm btn-outline-primary" onclick="loadRingkasanPerkaraBanding()">
-								<i class="bx bx-refresh me-1"></i> Refresh Ringkasan
-							</button>
-						</div>
-						<div class="table-responsive">
-							<table id="dtRingkasanBanding" class="table table-striped table-bordered table-hover align-middle" style="width:100%">
-								<thead class="table-dark">
-									<tr>
-										<th class="text-center" style="width:45px">No</th>
-										<th style="width:80px">Kode</th>
-										<th>Satuan Kerja Asal</th>
-										<th class="text-center">Total</th>
-										<th class="text-center">Sudah Diputus</th>
-										<th class="text-center">Dalam Proses</th>
-										<th class="text-center">Dicabut</th>
-										<th class="text-center">Rata-rata Lama</th>
-									</tr>
-								</thead>
-								<tbody>${rows}</tbody>
-								<tfoot class="table-light">
-									<tr>
-										<th colspan="3" class="text-end pe-3">Total:</th>
-										<th class="text-center">${response.reduce((sum, r) => sum + Number(r.total_perkara_banding), 0)}</th>
-										<th class="text-center">${response.reduce((sum, r) => sum + Number(r.sudah_diputus), 0)}</th>
-										<th class="text-center">${response.reduce((sum, r) => sum + Number(r.dalam_proses), 0)}</th>
-										<th class="text-center">${response.reduce((sum, r) => sum + Number(r.dicabut), 0)}</th>
-										<th class="text-center">${Math.round(response.reduce((sum, r) => sum + (Number(r.rata_rata_lama_proses) * Number(r.total_perkara_banding)), 0) / response.reduce((sum, r) => sum + r.total_perkara_banding, 0))} hari</th>
-									</tr>
-								</tfoot>
-							</table>
-						</div>
-						<small class="text-muted"><i class="bx bx-info-circle"></i> Klik pada baris untuk melihat detail perkara banding</small>
-					`;
+				const tableHtml = `
+					<div class="mb-2">
+						<button class="btn btn-sm btn-outline-primary" onclick="loadRingkasanPerkaraBanding()">
+							<i class="bx bx-refresh me-1"></i> Refresh Ringkasan
+						</button>
+					</div>
+					<div class="table-responsive">
+						<table id="dtRingkasanBanding" class="table table-striped table-bordered table-hover align-middle" style="width:100%">
+							<thead class="table-dark">
+								<tr>
+									<th class="text-center" style="width:45px">No</th>
+									<th style="width:80px">Kode</th>
+									<th>Satuan Kerja Asal</th>
+									<th class="text-center">Total</th>
+									<th class="text-center">Sudah Diputus</th>
+									<th class="text-center">Dalam Proses</th>
+									<th class="text-center">Dicabut</th>
+									<th class="text-center">Rata-rata Lama</th>
+								</tr>
+							</thead>
+							<tbody>${rows}</tbody>
+							<tfoot class="table-light">
+								<tr>
+									<th colspan="3" class="text-end pe-3">Total:</th>
+									<th class="text-center">${response.reduce((sum, r) => sum + Number(r.total_perkara_banding), 0)}</th>
+									<th class="text-center">${response.reduce((sum, r) => sum + Number(r.sudah_diputus), 0)}</th>
+									<th class="text-center">${response.reduce((sum, r) => sum + Number(r.dalam_proses), 0)}</th>
+									<th class="text-center">${response.reduce((sum, r) => sum + Number(r.dicabut), 0)}</th>
+									<th class="text-center">${Math.round(response.reduce((sum, r) => sum + (Number(r.rata_rata_lama_proses) * Number(r.total_perkara_banding)), 0) / response.reduce((sum, r) => sum + Number(r.total_perkara_banding), 0))} hari</th>
+								</tr>
+							</tfoot>
+						</table>
+					</div>
+					<small class="text-muted"><i class="bx bx-info-circle"></i> Klik pada baris untuk melihat detail perkara banding</small>
+				`;
 
 					$('#tabelPerkaraBanding').html(tableHtml);
 
@@ -3860,6 +3865,267 @@
 		});
 	});
 
+	// ============================================
+	// HAKIM WORKLOAD FUNCTIONS
+	// ============================================
+
+	/**
+	 * Get filter parameters for hakim workload
+	 */
+	function getHakimWorkloadFilters() {
+		const tgl_awal = document.getElementById('tgl_awal')?.value || null;
+		const tgl_akhir = document.getElementById('tgl_akhir')?.value || null;
+		const filter_tahun = document.getElementById('filter_tahun')?.value || null;
+
+		return {
+			tgl_awal: tgl_awal,
+			tgl_akhir: tgl_akhir,
+			filter_tahun: filter_tahun
+		};
+	}
+
+	/**
+	 * Load Hakim Workload Summary (KPI Cards)
+	 */
+	function loadHakimWorkloadSummary(kode_satker) {
+		const filters = getHakimWorkloadFilters();
+
+		$.ajax({
+			url: 'halamanutama/get_hakim_workload_summary',
+			type: 'GET',
+			data: Object.assign({ kode_satker: kode_satker, _: Date.now() }, filters),
+			dataType: 'json',
+			cache: false,
+			success: function(response) {
+				$('#totalHakim').text(response.total_hakim);
+				$('#avgWorkload').text(response.avg_workload);
+				$('#maxWorkload').text(response.max_workload);
+				$('#minWorkload').text(response.min_workload);
+				$('#totalPerkaraHakim').text(response.total_perkara);
+				$('#avgCompletionRate').text(response.avg_completion_rate + '%');
+			},
+			error: function(xhr, status, error) {
+				console.error('Error loading hakim workload summary:', error);
+			}
+		});
+	}
+
+	/**
+	 * Load Hakim Workload Distribution Pie Chart
+	 */
+	function loadHakimWorkloadDistribution(kode_satker) {
+		const filters = getHakimWorkloadFilters();
+
+		$.ajax({
+			url: 'halamanutama/get_hakim_workload_distribution',
+			type: 'GET',
+			data: Object.assign({ kode_satker: kode_satker, _: Date.now() }, filters),
+			dataType: 'json',
+			cache: false,
+			success: function(response) {
+				// Destroy existing chart if any
+				if (window.hakimDistributionChart) {
+					window.hakimDistributionChart.destroy();
+				}
+
+				// Calculate total before creating chart
+				const totalHakim = response.jumlah_hakim.reduce((a, b) => a + b, 0);
+
+				const options = {
+					series: response.jumlah_hakim,
+					labels: response.labels,
+					chart: {
+						type: 'donut',
+						height: 350,
+						fontFamily: 'Poppins, sans-serif',
+						id: 'chartHakimDistribution'
+					},
+					colors: ['#4361ee', '#3a0ca3', '#7209b7', '#f72585', '#4cc9f0'],
+					plotOptions: {
+						pie: {
+							donut: {
+								size: '70%',
+								labels: {
+									show: true,
+									name: { show: true },
+									value: { show: true },
+									total: {
+										show: true,
+										showAlways: true,
+										label: 'Total Hakim',
+										formatter: function() {
+											return totalHakim;
+										}
+									}
+								}
+							}
+						}
+					},
+					dataLabels: { enabled: false },
+					legend: { position: 'bottom' },
+					tooltip: {
+						y: {
+							formatter: function(val) {
+								return val + " Hakim";
+							}
+						}
+					}
+				};
+
+				window.hakimDistributionChart = new ApexCharts(document.querySelector("#chartHakimDistribution"), options);
+				window.hakimDistributionChart.render();
+			},
+			error: function(xhr, status, error) {
+				console.error('Error loading hakim distribution:', error);
+			}
+		});
+	}
+
+	/**
+	 * Load Hakim Workload Top Bar Chart
+	 */
+	function loadHakimWorkloadTop(kode_satker) {
+		const filters = getHakimWorkloadFilters();
+
+		$.ajax({
+			url: 'halamanutama/get_hakim_workload_top',
+			type: 'GET',
+			data: Object.assign({ kode_satker: kode_satker, _: Date.now() }, filters),
+			dataType: 'json',
+			cache: false,
+			success: function(response) {
+				// Destroy existing chart if any
+				if (window.hakimTopChart) {
+					window.hakimTopChart.destroy();
+				}
+
+				const names = response.map(r => r.nama);
+				const totals = response.map(r => r.total_perkara);
+
+				const options = {
+					series: [{ name: 'Total Perkara', data: totals }],
+					chart: {
+						type: 'bar',
+						height: 400,
+						fontFamily: 'Poppins, sans-serif',
+						toolbar: { show: false },
+						id: 'chartHakimTop'
+					},
+					plotOptions: {
+						bar: {
+							horizontal: true,
+							borderRadius: 4
+						}
+					},
+					colors: ['#4361ee'],
+					dataLabels: { enabled: true },
+					xaxis: {
+						categories: names,
+						labels: { style: { fontSize: '11px' } }
+					},
+					yaxis: {
+						labels: {
+							style: { fontSize: '12px' },
+							formatter: function(val) {
+								return val + " perkara";
+							}
+						}
+					},
+					grid: {
+						row: { colors: ['#f3f3f3', 'transparent'] }
+					},
+					tooltip: {
+						y: {
+							formatter: function(val) { return val + " perkara"; }
+						}
+					}
+				};
+
+				window.hakimTopChart = new ApexCharts(document.querySelector("#chartHakimTop"), options);
+				window.hakimTopChart.render();
+			},
+			error: function(xhr, status, error) {
+				console.error('Error loading hakim top:', error);
+			}
+		});
+	}
+
+	/**
+	 * Load Hakim Workload Table
+	 */
+	function loadHakimWorkloadTable(kode_satker) {
+		const filters = getHakimWorkloadFilters();
+
+		const table = $('#tableHakimWorkload').DataTable({
+			destroy: true,
+			responsive: true,
+			ajax: {
+				url: 'halamanutama/get_hakim_workload_list',
+				data: Object.assign({ kode_satker: kode_satker }, filters),
+				dataSrc: 'data'
+			},
+			columns: [
+				{
+					data: null,
+					render: function(data, type, row, meta) {
+						return meta.row + 1;
+					}
+				},
+				{ data: 'hakim_nama' },
+				{ data: 'hakim_nip' },
+				{
+					data: 'total_perkara',
+					render: function(data) {
+						return `<span class="badge bg-primary">${data}</span>`;
+					}
+				},
+				{
+					data: 'sebagai_ketua',
+					render: function(data) {
+						return `<span class="badge bg-info">${data}</span>`;
+					}
+				},
+				{
+					data: 'sebagai_anggota',
+					render: function(data) {
+						return `<span class="badge bg-secondary">${data}</span>`;
+					}
+				},
+				{
+					data: 'completion_rate',
+					render: function(data) {
+						const color = data >= 90 ? 'success' : data >= 70 ? 'warning' : 'danger';
+						return `<span class="badge bg-${color}">${data}%</span>`;
+					}
+				},
+				{
+					data: 'avg_hari_penyelesaian',
+					render: function(data) {
+						return data ? `${data} hari` : '-';
+					}
+				}
+			],
+			order: [[3, 'desc']],
+			language: {
+				url: "//cdn.datatables.net/plug-ins/1.13.6/i18n/id.json"
+			}
+		});
+	}
+
+	/**
+	 * Initialize all Hakim Workload components
+	 */
+	function loadHakimWorkload(kode_satker) {
+		// If kode_satker is '401582' (MS Aceh - banding), pass null to show all satker
+		// because banding court doesn't have hakim_pn data
+		const actualKode = (kode_satker === '401582') ? null : kode_satker;
+
+		loadHakimWorkloadSummary(actualKode);
+		loadHakimWorkloadDistribution(actualKode);
+		loadHakimWorkloadTop(actualKode);
+		loadHakimWorkloadTable(actualKode);
+	}
+
 	// Expose functions ke global scope untuk digunakan di HTML
 	window.getSatker = getSatker;
 	window.setFilter = setFilter;
@@ -3870,6 +4136,7 @@
 	window.loadChartStatistikKasasi = loadChartStatistikKasasi;
 	window.loadDetailKasasi = loadDetailKasasi;
 	window.loadDetailKasasiFromTable = loadDetailKasasiFromTable;
+	window.loadHakimWorkload = loadHakimWorkload;
 
 	window.loadDashboardSAKIP = loadDashboardSAKIP;
 

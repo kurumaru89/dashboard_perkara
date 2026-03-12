@@ -1,11 +1,16 @@
 .DS_Store
-
-application/cache/*
+.gitignore
+.htaccess
+./application/cache/*
 !application/cache/index.html
-
+.claude/*
+.mcp.json
+/docs/*
+*.sql
+sql/
 application/logs/*
 !application/logs/index.html
-
+application/libraries/*
 !application/*/.htaccess
 
 composer.lock
