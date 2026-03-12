@@ -524,7 +524,7 @@
 			const tahunDisplay = filter_tahun || new Date().getFullYear();
 
 			$.ajax({
-				url: 'halamanutama/get_kpi_summary',
+				url: 'HalamanUtama/get_kpi_summary',
 				type: 'GET',
 				data: data,
 				dataType: 'json',
@@ -1702,7 +1702,7 @@
 		$('#tabelPerdataTepat').html('<div class="text-center py-5"><div class="spinner-border text-primary" role="status"></div></div>');
 
 		$.ajax({
-			url: 'halamansakip/get_tabel_perdata_tepat',
+			url: 'HalamanSakip/get_tabel_perdata_tepat',
 			type: 'POST',
 			data: { kode_satker: kode_satker, tahun: tahun },
 			dataType: 'json',
@@ -1869,7 +1869,7 @@
 		$('#tabelPerkaraEcourt').html('<div class="text-center py-5"><div class="spinner-border text-primary" role="status"></div></div>');
 
 		$.ajax({
-			url: 'halamansakip/get_tabel_perkara_ecourt',
+			url: 'HalamanSakip/get_tabel_perkara_ecourt',
 			type: 'POST',
 			data: { kode_satker: kode_satker, tahun: tahun },
 			dataType: 'json',
@@ -1935,7 +1935,7 @@
 	function loadPiePerkaraEBerpadu(kode_satker, tahun) {
 		return new Promise((resolve, reject) => {
 			$.ajax({
-				url: 'halamansakip/get_chart_perkara_eberpadu',
+				url: 'HalamanSakip/get_chart_perkara_eberpadu',
 				type: "POST",
 				data: { kode_satker: kode_satker, tahun: tahun },
 				dataType: "json",
@@ -2030,7 +2030,7 @@
 		$('#tabelPerkaraEBerpadu').html('<div class="text-center py-5"><div class="spinner-border text-primary" role="status"></div></div>');
 
 		$.ajax({
-			url: 'halamansakip/get_tabel_perkara_eberpadu',
+			url: 'HalamanSakip/get_tabel_perkara_eberpadu',
 			type: 'POST',
 			data: { kode_satker: kode_satker, tahun: tahun },
 			dataType: 'json',
@@ -2190,7 +2190,7 @@
 		$('#tabelJinayatTepat').html('<div class="text-center py-5"><div class="spinner-border text-primary" role="status"></div></div>');
 
 		$.ajax({
-			url: 'halamansakip/get_tabel_jinayat_tepat',
+			url: 'HalamanSakip/get_tabel_jinayat_tepat',
 			type: 'POST',
 			data: { kode_satker: kode_satker, tahun: tahun },
 			dataType: 'json',
@@ -2263,7 +2263,7 @@
 		$('#tabelProdeo').html('<div class="text-center py-5"><div class="spinner-border text-primary" role="status"></div></div>');
 
 		$.ajax({
-			url: 'halamansakip/get_tabel_prodeo',
+			url: 'HalamanSakip/get_tabel_prodeo',
 			type: 'POST',
 			data: { kode_satker: kode_satker, tahun: tahun },
 			dataType: 'json',
@@ -2346,7 +2346,7 @@
 		$('#tabelPerkaraBanding').html('<div class="text-center py-5"><div class="spinner-border text-primary" role="status"></div></div>');
 
 		$.ajax({
-			url: 'halamanutama/get_ringkasan_perkara_banding_per_satker',
+			url: 'HalamanUtama/get_ringkasan_perkara_banding_per_satker',
 			type: 'GET',
 			data: { _: Date.now() },
 			dataType: 'json',
@@ -2434,7 +2434,7 @@
 	function loadDetailPerkaraBandingBySatker(kode_satker_asal) {
 		$('#tabelPerkaraBanding').html('<div class="text-center py-5"><div class="spinner-border text-primary" role="status"></div></div>');
 
-		$.post('halamanutama/get_detail_perkara_banding_by_satker', {
+		$.post('HalamanUtama/get_detail_perkara_banding_by_satker', {
 			kode_satker_asal: kode_satker_asal
 		})
 			.done(function (response) {
@@ -2538,7 +2538,7 @@
 		$('#tabelPerkaraBanding').html('<div class="text-center py-5"><div class="spinner-border text-primary" role="status"></div></div>');
 
 		$.ajax({
-			url: 'halamanutama/show_perkara_banding',
+			url: 'HalamanUtama/show_perkara_banding',
 			type: 'POST',
 			data: {
 				kode: kode,
@@ -2630,7 +2630,7 @@
 		// Jika MS Aceh (tingkat banding), tampilkan tabel ringkasan per satker
 		if (kode_satker === '401582') {
 			$.ajax({
-				url: 'halamanutama/get_ringkasan_kasasi_per_satker',
+				url: 'HalamanUtama/get_ringkasan_kasasi_per_satker',
 				type: 'GET',
 				data: { _: Date.now() },
 				dataType: 'json',
@@ -2719,7 +2719,7 @@
 		} else {
 			// Untuk satker tingkat pertama, tampilkan chart dengan tombol detail
 			$.ajax({
-				url: 'halamanutama/get_statistik_kasasi',
+				url: 'HalamanUtama/get_statistik_kasasi',
 				type: 'GET',
 				data: { kode_satker: kode_satker, _: Date.now() },
 				dataType: 'json',
@@ -2855,7 +2855,7 @@
 	function loadDetailKasasi(kode_satker, periode_bulan = null, parent_context = null) {
 		$('#containerStatistikKasasi').html('<div class="text-center py-5"><div class="spinner-border text-primary" role="status"></div></div>');
 
-		$.post('halamanutama/get_detail_statistik_kasasi', {
+		$.post('HalamanUtama/get_detail_statistik_kasasi', {
 			kode_satker: kode_satker,
 			periode_bulan: periode_bulan
 		})
@@ -3024,7 +3024,7 @@
 		$('#tabelSinkronisasi').html('<div class="text-center py-5"><div class="spinner-border text-primary" role="status"></div></div>');
 
 		$.ajax({
-			url: 'halamanutama/get_sinkronisasi_status',
+			url: 'HalamanUtama/get_sinkronisasi_status',
 			type: 'GET',
 			dataType: 'json'
 		})
@@ -3891,7 +3891,7 @@
 		const filters = getHakimWorkloadFilters();
 
 		$.ajax({
-			url: 'halamanutama/get_hakim_workload_summary',
+			url: 'HalamanUtama/get_hakim_workload_summary',
 			type: 'GET',
 			data: Object.assign({ kode_satker: kode_satker, _: Date.now() }, filters),
 			dataType: 'json',
@@ -3917,7 +3917,7 @@
 		const filters = getHakimWorkloadFilters();
 
 		$.ajax({
-			url: 'halamanutama/get_hakim_workload_distribution',
+			url: 'HalamanUtama/get_hakim_workload_distribution',
 			type: 'GET',
 			data: Object.assign({ kode_satker: kode_satker, _: Date.now() }, filters),
 			dataType: 'json',
@@ -3988,7 +3988,7 @@
 		const filters = getHakimWorkloadFilters();
 
 		$.ajax({
-			url: 'halamanutama/get_hakim_workload_top',
+			url: 'HalamanUtama/get_hakim_workload_top',
 			type: 'GET',
 			data: Object.assign({ kode_satker: kode_satker, _: Date.now() }, filters),
 			dataType: 'json',
@@ -4060,7 +4060,7 @@
 			destroy: true,
 			responsive: true,
 			ajax: {
-				url: 'halamanutama/get_hakim_workload_list',
+				url: 'HalamanUtama/get_hakim_workload_list',
 				data: Object.assign({ kode_satker: kode_satker }, filters),
 				dataSrc: 'data'
 			},
