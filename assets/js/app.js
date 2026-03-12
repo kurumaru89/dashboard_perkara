@@ -648,7 +648,7 @@
 				loadTabelEksekusi(...params),
 				loadTabelEksekusiHT(...params),
 				loadTabelPerkaraJinayat(...params),
-				loadTabelPerkaraJinayatKasasi(...params),
+				//loadTabelPerkaraJinayatKasasi(...params),
 				loadChartJinayat(...params),
 				loadTabelPerkaraBanding(...params),
 				loadChartStatistikKasasi(kode),
